@@ -278,7 +278,7 @@ void test_atanh( void )
 template <typename T>
 T test_grad_func_1( T *x, size_t n )
 {
-    T res = x[0]*x[0] + std::exp(x[1]);
+    T res = x[0]*x[0]*x[1] + std::exp(x[1]);
     return res;
 }
 
@@ -292,7 +292,7 @@ void test_grad_1( void )
 
     double eps[n] = { 1e-8, 1e-8 };
 
-    finite_differences( g1, x, eps, n, test_grad_func_1<double> );
+    fd_grad( NULL, g1, x, eps, n, test_grad_func_1<double> );
     fwd_gradient( NULL, g2, x, n, test_grad_func_1<Fwd<double>> );
 
     for ( size_t i=0; i<n; ++i ) {
@@ -302,28 +302,37 @@ void test_grad_1( void )
 #undef n
 }
 
+#include <stdio.h>
 
-// add: Fwd<T>( val + rhs.val, dot + rhs.dot );
-// mul: Fwd<T>( val * rhs.val, (val * rhs.dot) + (dot * rhs.val) )
-
-template <typename T, typename S>
-auto multivariate( T x, S y )
+void test_hess_1( void )
 {
-    return x*x*x; // + x*y + x;
+#define n 2
+
+    double x[n] = { 4.0, 1.0 };
+    double g1[n];
+    double g2[n];
+    double h1[n*n];
+    double h2[n*n];
+
+    double eps[n] = { 1e-8, 1e-8 };
+
+    fwd_gradient( NULL, g1, x, n, test_grad_func_1<Fwd<double>> );
+    fwd_hessian( NULL, h2, g2, x, n, test_grad_func_1< Fwd<Fwd<double>> > );
+
+    for ( size_t i=0; i<n; ++i ) {
+        ASSERT( approx(g1[i], g2[i], 1e-6) );
+    }
+
+    for ( size_t i = 0; i < n*n; i++ ) {
+    	printf("h[%zu] = %.4f\n", i, h2[i]);
+    }
+
+#undef n
 }
 
-
-template <typename T>
-Fwd<T> multivariate_grad_target( Fwd<T> *x, size_t n )
-{
-    return multivariate( x[0], x[1] );
-}
 
 
 #if FWD_AD_MAIN
-
-#include "stdio.h"
-
 
 int main( int argn, const char *argv[] )
 {
@@ -347,42 +356,8 @@ int main( int argn, const char *argv[] )
     test_tanh();
     test_atanh();
     test_grad_1();
+    test_hess_1();
 
-    {
-        Fwd<double> x(3.0, 1.0);
-        Fwd<double> y(5.0);
-
-        Fwd<double> z = multivariate(x, y);
-
-        printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
-
-
-        printf("Computing the gradient\n");
-#define n 2
-
-        double g[n];
-        double vals[n] = {3.0, 5.0};
-
-        fwd_gradient(NULL, g, vals, n, multivariate_grad_target<double>);
-
-        printf("d.f/d.x = %.4f \t d.f/d.y = %.4f\n", g[0], g[1]);
-    }
-
-    {
-        Fwd<Fwd<double>> x = {0};
-        x.val.val = 4.0; x.val.dot = 1.0;
-        x.dot.val = 1.0; x.dot.dot = 0.0;
-
-        Fwd<Fwd<double>> y = {0};
-        y.val.val = 5.0;
-
-
-        Fwd<Fwd<double>> z = multivariate(x, y);
-
-        printf("z.val.val = %.4f, z.val.dot = %.4f\nz.dot.val = %.4f, z.dot.dot = %.4f\n\n",
-            z.val.val, z.val.dot, z.dot.val, z.dot.dot);
-
-    }
     return 0;
 }
 #endif

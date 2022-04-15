@@ -1,7 +1,7 @@
 
 // prototype for f: double f( double *x, size_t n )
 template <typename F>
-void finite_differences( double *fval, double *g, double *x, double *eps, size_t n, F f )
+void fd_grad( double *fval, double *g, double *x, double *eps, size_t n, F f )
 {
     if ( fval ) {
         *fval = f( x, n );
@@ -20,7 +20,7 @@ void finite_differences( double *fval, double *g, double *x, double *eps, size_t
 
 // prototype for f: double f( double *x, size_t n )
 template <typename F>
-void central_differences( double *fval, double *g, double *x, double *eps, size_t n, F f )
+void cd_grad( double *fval, double *g, double *x, double *eps, size_t n, F f )
 {
     if ( fval ) {
         *fval = f( x, n );

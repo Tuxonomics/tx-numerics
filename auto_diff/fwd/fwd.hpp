@@ -453,7 +453,7 @@ template <typename F>
 void fwd_gradient_no_alloc( double *f_val, double *g, double *x, Fwd<double> *x_cpy, size_t n, F f )
 {
     Fwd<double> tmp = { 0 };
-    int f_val_not_set = 0;
+    int f_val_not_set = 1;
 
     for ( size_t i=0; i<n; ++i ) {
         x_cpy[i] = Fwd<double> (x[i]);
@@ -466,6 +466,7 @@ void fwd_gradient_no_alloc( double *f_val, double *g, double *x, Fwd<double> *x_
 
         if (f_val_not_set && f_val != NULL) {
             *f_val = tmp.val;
+            f_val_not_set = 0;
         }
 
         g[i] = tmp.dot;
@@ -478,54 +479,93 @@ void fwd_gradient_no_alloc( double *f_val, double *g, double *x, Fwd<double> *x_
 template <typename F>
 void fwd_gradient( double *f_val, double *g, double *x, size_t n, F f )
 {
-    Fwd<double> *x_cpy = (Fwd<double>*) malloc(n * sizeof(Fwd<double>));
+#define FWD_GRAD_STACK_SIZE 50
+
+    Fwd<double> *x_cpy;
+
+    if ( n >= FWD_GRAD_STACK_SIZE ) {
+        x_cpy = (Fwd<double>*) malloc(n * sizeof(*x_cpy));
+    }
+    else {
+        Fwd<double> buff[FWD_GRAD_STACK_SIZE];
+        x_cpy = buff;
+    }
 
     fwd_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
 
-    free(x_cpy);
+    if ( n >= FWD_GRAD_STACK_SIZE ) {
+        free(x_cpy);
+    }
+
+#undef FWD_GRAD_STACK_SIZE
 }
 
 
 
 // Hessian from function / functor fulfilling prototype
 // f: Fwd<double> f( Fwd<double> *x, size_t n )
+// h is column-major nxn matrix
+
+template <typename F>
+void fwd_hessian_no_alloc( double *f_val, double*h, double *g, double *x, Fwd<Fwd<double>> *x_cpy, size_t n, F f )
+{
+    Fwd<Fwd<double>> tmp = { 0 };
+    int f_val_not_set = 1;
+
+    for ( size_t i=0; i<n; ++i ) {
+        x_cpy[i] = Fwd<Fwd<double>>( Fwd<double>(x[i]) );
+    }
+
+    for ( size_t i=0; i<n; ++i ) {
+        x_cpy[i].val.dot = 1.0;
+
+        for ( size_t j=0; j<n; ++j ) {
+            x_cpy[j].dot.val = 1.0;
+
+            tmp = f( x_cpy, n );
+
+            if ( f_val_not_set && f_val != NULL ) {
+                *f_val = tmp.val.val;
+                f_val_not_set = 0;
+            }
+
+            if ( i == 0 && g != NULL ) {
+                g[i] = tmp.val.dot;
+            }
+
+            h[i + j*n] = tmp.dot.dot;
+
+            x_cpy[j].dot.val = 0.0;
+        }
+
+        x_cpy[i].val.dot = 0.0;
+    }
+}
 
 
-// // prototype for f: Fwd<Fwd<double>> f( Fwd<Fwd<double>> *x, size_t n )
-// template <typename F>
-// void fwd_hessian_no_alloc( double *f_val, double *g, double *x, Fwd<Fwd<double>> *x_cpy, size_t n, F f )
-// {
-//     Fwd<Fwd<double>> tmp = { 0 };
-//     int f_val_not_set = 0;
+template <typename F>
+void fwd_hessian( double *f_val, double*h, double *g, double *x, size_t n, F f )
+{
+#define FWD_HESS_STACK_SIZE 50
 
-//     for ( size_t i=0; i<n; ++i ) {
-//         x_cpy[i] = Fwd<Fwd<double>> (x[i]);
-//     }
+    Fwd<Fwd<double>> *x_cpy;
 
-//     for ( size_t i=0; i<n; ++i ) {
-//         x_cpy[i].dot = 1.0;
+    if ( n >= FWD_HESS_STACK_SIZE ) {
+        x_cpy = (Fwd<Fwd<double>>*) malloc(n * sizeof(*x_cpy));
+    }
+    else {
+        Fwd<Fwd<double>> buff[FWD_HESS_STACK_SIZE];
+        x_cpy = buff;
+    }
 
-//         tmp = f( x_cpy, n );
+    fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
 
-//         if (f_val_not_set && f_val != NULL) {
-//             *f_val = tmp.val;
-//         }
+    if ( n >= FWD_HESS_STACK_SIZE ) {
+        free(x_cpy);
+    }
 
-//         g[i] = tmp.dot;
+#undef FWD_HESS_STACK_SIZE
+}
 
-//         x_cpy[i].dot = 0.0;
-//     }
-// }
-
-
-// template <typename F>
-// void fwd_hessian( double *f_val, double *g, double *x, size_t n, F f )
-// {
-//     Fwd<Fwd<double>> *x_cpy = (Fwd<Fwd<double>>*) malloc(n * sizeof(Fwd<Fwd<double>>));
-
-//     fwd_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
-
-//     free(x_cpy);
-// }
 
 
