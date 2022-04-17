@@ -481,14 +481,11 @@ void fwd_gradient( double *f_val, double *g, double *x, size_t n, F f )
 {
 #define FWD_GRAD_STACK_SIZE 50
 
-    Fwd<double> *x_cpy;
+    Fwd<double> buff[FWD_GRAD_STACK_SIZE];
+    Fwd<double> *x_cpy = buff;
 
     if ( n >= FWD_GRAD_STACK_SIZE ) {
         x_cpy = (Fwd<double>*) malloc(n * sizeof(*x_cpy));
-    }
-    else {
-        Fwd<double> buff[FWD_GRAD_STACK_SIZE];
-        x_cpy = buff;
     }
 
     fwd_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
@@ -529,7 +526,7 @@ void fwd_hessian_no_alloc( double *f_val, double*h, double *g, double *x, Fwd<Fw
                 f_val_not_set = 0;
             }
 
-            if ( i == 0 && g != NULL ) {
+            if ( j == 0 && g != NULL ) {
                 g[i] = tmp.val.dot;
             }
 
@@ -542,20 +539,16 @@ void fwd_hessian_no_alloc( double *f_val, double*h, double *g, double *x, Fwd<Fw
     }
 }
 
-
 template <typename F>
 void fwd_hessian( double *f_val, double*h, double *g, double *x, size_t n, F f )
 {
 #define FWD_HESS_STACK_SIZE 50
 
-    Fwd<Fwd<double>> *x_cpy;
+    Fwd<Fwd<double>> buff[FWD_HESS_STACK_SIZE];
+    Fwd<Fwd<double>> *x_cpy = buff;
 
     if ( n >= FWD_HESS_STACK_SIZE ) {
         x_cpy = (Fwd<Fwd<double>>*) malloc(n * sizeof(*x_cpy));
-    }
-    else {
-        Fwd<Fwd<double>> buff[FWD_HESS_STACK_SIZE];
-        x_cpy = buff;
     }
 
     fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
