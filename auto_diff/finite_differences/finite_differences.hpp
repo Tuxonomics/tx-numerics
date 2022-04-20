@@ -1,7 +1,7 @@
 
-// prototype for f: double f( double *x, size_t n )
+// prototype for f: double f( double x[], size_t n )
 template <typename F>
-void fd_grad( double *fval, double *g, double *x, double *eps, size_t n, F f )
+void fd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f )
 {
     if ( fval ) {
         *fval = f( x, n );
@@ -18,9 +18,9 @@ void fd_grad( double *fval, double *g, double *x, double *eps, size_t n, F f )
 
 
 
-// prototype for f: double f( double *x, size_t n )
+// prototype for f: double f( double x[], size_t n )
 template <typename F>
-void cd_grad( double *fval, double *g, double *x, double *eps, size_t n, F f )
+void cd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f )
 {
     if ( fval ) {
         *fval = f( x, n );
