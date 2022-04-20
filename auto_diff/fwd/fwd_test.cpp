@@ -143,6 +143,22 @@ void test_incr_decr( void )
     ASSERT( x.dot == 1.0 );
 }
 
+void test_abs( void )
+{
+    Fwd<double> x(2.0, 1.0);
+
+    Fwd<double> z = abs(x);
+
+    ASSERT( z.val == x.val );
+    ASSERT( z.dot == x.dot );
+
+
+    z = abs(-x);
+
+    ASSERT( z.val == x.val );
+    ASSERT( z.dot == x.dot );
+}
+
 void test_sqrt( void )
 {
     Fwd<double> x(2.0, 1.0);
@@ -324,7 +340,7 @@ void test_hess_1( void )
     }
 
     for ( size_t i = 0; i < n*n; i++ ) {
-    	printf("h[%zu] = %.4f\n", i, h2[i]);
+        printf("h[%zu] = %.4f\n", i, h2[i]);
     }
 
 #undef n
@@ -342,6 +358,7 @@ int main( int argn, const char *argv[] )
     test_fwd_mul();
     test_fwd_div();
     test_incr_decr();
+    test_abs();
     test_sqrt();
     test_pow();
     test_sin();

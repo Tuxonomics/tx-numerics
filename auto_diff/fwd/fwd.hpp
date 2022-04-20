@@ -357,6 +357,23 @@ bool operator>=( double lhs, Fwd<T> rhs )
 namespace std {
 
 template <typename T>
+Fwd<T> abs( Fwd<T> x )
+{
+    if ( x.val > 0.0 ) {
+        return x;
+    }
+    else if ( x.val < 0.0 ) {
+        return -x;
+    }
+    else if ( x.val == 0.0 ) {
+        return Fwd(T(0.0), T(0.0));
+    }
+    else { // x.val = inf, -inf, nan, ...
+        return Fwd(abs(x.val), T(NAN));
+    }
+}
+
+template <typename T>
 Fwd<T> sqrt( Fwd<T> x )
 {
     T tmp = std::sqrt( x.val );
@@ -538,6 +555,7 @@ void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fw
         x_cpy[i].val.dot = 0.0;
     }
 }
+
 
 template <typename F>
 void fwd_hessian( double *f_val, double h[], double g[], double x[], size_t n, F f )
