@@ -446,11 +446,11 @@ Fwd<T> atanh( Fwd<T> x )
 
 
 // Gradient from function / functor fulfilling prototype
-// f: Fwd<double> f( Fwd<double> *x, size_t n )
+// f: Fwd<double> f( Fwd<double> x[], size_t n )
 
 
 template <typename F>
-void fwd_gradient_no_alloc( double *f_val, double *g, double *x, Fwd<double> *x_cpy, size_t n, F f )
+void fwd_gradient_no_alloc( double *f_val, double g[], double x[], Fwd<double> x_cpy[], size_t n, F f )
 {
     Fwd<double> tmp = { 0 };
     int f_val_not_set = 1;
@@ -477,7 +477,7 @@ void fwd_gradient_no_alloc( double *f_val, double *g, double *x, Fwd<double> *x_
 
 
 template <typename F>
-void fwd_gradient( double *f_val, double *g, double *x, size_t n, F f )
+void fwd_gradient( double *f_val, double g[], double x[], size_t n, F f )
 {
 #define FWD_GRAD_STACK_SIZE 50
 
@@ -503,11 +503,11 @@ void fwd_gradient( double *f_val, double *g, double *x, size_t n, F f )
 
 
 // Hessian from function / functor fulfilling prototype
-// f: Fwd<double> f( Fwd<double> *x, size_t n )
+// f: Fwd<Fwd<double>> f( Fwd<Fwd<double>> x[], size_t n )
 // h is column-major nxn matrix
 
 template <typename F>
-void fwd_hessian_no_alloc( double *f_val, double*h, double *g, double *x, Fwd<Fwd<double>> *x_cpy, size_t n, F f )
+void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fwd<Fwd<double>> x_cpy[], size_t n, F f )
 {
     Fwd<Fwd<double>> tmp = { 0 };
     int f_val_not_set = 1;
@@ -544,7 +544,7 @@ void fwd_hessian_no_alloc( double *f_val, double*h, double *g, double *x, Fwd<Fw
 
 
 template <typename F>
-void fwd_hessian( double *f_val, double*h, double *g, double *x, size_t n, F f )
+void fwd_hessian( double *f_val, double h[], double g[], double x[], size_t n, F f )
 {
 #define FWD_HESS_STACK_SIZE 50
 
