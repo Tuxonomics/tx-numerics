@@ -533,7 +533,7 @@ void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fw
     for ( size_t i=0; i<n; ++i ) {
         x_cpy[i].val.dot = 1.0;
 
-        for ( size_t j=0; j<n; ++j ) {
+        for ( size_t j=i; j<n; ++j ) {
             x_cpy[j].dot.val = 1.0;
 
             tmp = f( x_cpy, n );
@@ -548,6 +548,7 @@ void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fw
             }
 
             h[i + j*n] = tmp.dot.dot;
+            h[j + i*n] = tmp.dot.dot;
 
             x_cpy[j].dot.val = 0.0;
         }

@@ -29,7 +29,7 @@ bool approx( double a, double b, double eps )
 
 void test_fwd( void )
 {
-    Fwd<double> x(1.0);
+    Fwd<double> x; x.val = 5.0; x.dot = 1.0;
 
     double y = double(x);
 
