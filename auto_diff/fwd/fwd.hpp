@@ -1,4 +1,4 @@
-// fwd.cpp
+// fwd.hpp
 //
 // A simple scalar-based implementation of forward mode automatic differentiation.
 // This is for testing and applications where a small number of parameters

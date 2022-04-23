@@ -105,6 +105,12 @@ Fwd operator*( double lhs, Fwd rhs )
 
 namespace std {
 
+Fwd pow( Fwd x, double a )
+{
+    double tmp = std::pow( x.val, a - 1.0 );
+    return Fwd( x.val * tmp, a * tmp * x.dot );
+}
+
 Fwd exp( Fwd x )
 {
     double tmp = std::exp(x.val);
@@ -124,7 +130,7 @@ Fwd log( Fwd x )
 
 // prototype for f: Fwd f( Fwd *x, size_t n )
 template <typename F>
-void fwd_gradient_no_alloc( double *g, double *x, Fwd *x_cpy, size_t n, F f )
+void fwd_gradient_no_alloc( double g[], double x[], Fwd *x_cpy, size_t n, F f )
 {
     Fwd tmp = { 0 };
 
@@ -145,7 +151,7 @@ void fwd_gradient_no_alloc( double *g, double *x, Fwd *x_cpy, size_t n, F f )
 
 
 template <typename F>
-void fwd_gradient( double *g, double *x, size_t n, F f )
+void fwd_gradient( double g[], double x[], size_t n, F f )
 {
     Fwd *x_cpy = (Fwd*) malloc(n * sizeof(Fwd));
 
@@ -162,60 +168,73 @@ void fwd_gradient( double *g, double *x, size_t n, F f )
 // -------- //
 
 
-Fwd univariate( Fwd x )
+Fwd univariate1( Fwd x )
 {
-	return x*x;
+    return std::pow(x, 2.0);
+}
+
+
+Fwd univariate2( Fwd x )
+{
+    return x*x;
 }
 
 template <typename T, typename S>
 auto multivariate( T x, S y )
 {
-	return std::log(std::exp(x*y + x));
+    return x*y + x;
 }
 
 
 Fwd multivariate_grad_target( Fwd *x, size_t n )
 {
-	return multivariate( x[0], x[1] );
+    return multivariate( x[0], x[1] );
 }
 
 
 int main( int argn, const char *argv[] )
 {
-	printf("Univariate example\n");
+    printf("Univariate by power function example\n");
 
-	Fwd x(5.0, 1.0);
+    Fwd x(5.0, 1.0);
 
-	Fwd z = univariate(x);
+    Fwd z = univariate1(x);
 
-	printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
-
-
-	printf("Multivariate example\n");
-
-	x.val = 3.0;
-	x.dot = 1.0;
-
-	Fwd y(5.0);
-
-	z = multivariate(x, y);
-
-	printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
-
-	z = multivariate(x, 5.0);
-
-	printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
+    printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
 
 
-	printf("Computing the gradient\n");
+    printf("Univariate by multiplication example\n");
+
+    z = univariate2(x);
+
+    printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
+
+
+    printf("Multivariate example\n");
+
+    x.val = 3.0;
+    x.dot = 1.0;
+
+    Fwd y(5.0);
+
+    z = multivariate(x, y);
+
+    printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
+
+    z = multivariate(x, 5.0);
+
+    printf("z.val = %.4f, z.dot = %.4f\n\n", z.val, z.dot);
+
+
+    printf("Computing the gradient\n");
 #define n 2
 
-	double g[n];
-	double vals[n] = {3.0, 5.0};
+    double g[n];
+    double vals[n] = {3.0, 5.0};
 
-	fwd_gradient(g, vals, n, multivariate_grad_target);
+    fwd_gradient(g, vals, n, multivariate_grad_target);
 
-	printf("d.f/d.x = %.4f \t d.f/d.y = %.4f\n", g[0], g[1]);
+    printf("d.f/d.x = %.4f \t d.f/d.y = %.4f\n", g[0], g[1]);
 
 }
 
