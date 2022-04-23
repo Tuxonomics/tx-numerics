@@ -179,8 +179,18 @@ Fwd univariate2( Fwd x )
     return x*x;
 }
 
-template <typename T, typename S>
-auto multivariate( T x, S y )
+
+Fwd multivariate( Fwd x, double y )
+{
+    return x*y + x;
+}
+
+Fwd multivariate( double x, Fwd y )
+{
+    return x*y + x;
+}
+
+Fwd multivariate( Fwd x, Fwd y )
 {
     return x*y + x;
 }
