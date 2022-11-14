@@ -333,9 +333,9 @@ void test_hess_1( void )
         ASSERT( approx(g1[i], g2[i], 1e-6) );
     }
 
-    for ( size_t i = 0; i < n*n; i++ ) {
-        printf("h[%zu] = %.4f\n", i, h2[i]);
-    }
+    // for ( size_t i = 0; i < n*n; i++ ) {
+    //     printf("h[%zu] = %.4f\n", i, h2[i]);
+    // }
 
 #undef n
 }

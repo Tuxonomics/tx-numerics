@@ -543,7 +543,7 @@ void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fw
                 f_val_not_set = 0;
             }
 
-            if ( j == 0 && g != NULL ) {
+            if ( j == i && g != NULL ) {
                 g[i] = tmp.val.dot;
             }
 
