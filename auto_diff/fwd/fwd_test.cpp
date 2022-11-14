@@ -7,12 +7,6 @@
 #include "../finite_differences/finite_differences.hpp"
 
 
-#if !defined(ASSERT)
-    #include <assert.h>
-    #define ASSERT assert
-#endif
-
-
 using namespace std;
 
 
@@ -347,35 +341,28 @@ void test_hess_1( void )
 }
 
 
-
-#if FWD_AD_MAIN
-
-int main( int argn, const char *argv[] )
-{
-    test_fwd();
-    test_fwd_add();
-    test_fwd_sub();
-    test_fwd_mul();
-    test_fwd_div();
-    test_incr_decr();
-    test_abs();
-    test_sqrt();
-    test_pow();
-    test_sin();
-    test_cos();
-    test_tan();
-    test_atan();
-    test_exp();
-    test_log();
-    test_logabs();
-    test_sinh();
-    test_cosh();
-    test_tanh();
-    test_atanh();
-    test_grad_1();
-    test_hess_1();
-
-    return 0;
-}
-#endif
+test tests[N_TESTS] = {
+    ADD_TEST(test_fwd),
+    ADD_TEST(test_fwd_add),
+    ADD_TEST(test_fwd_sub),
+    ADD_TEST(test_fwd_mul),
+    ADD_TEST(test_fwd_div),
+    ADD_TEST(test_incr_decr),
+    ADD_TEST(test_abs),
+    ADD_TEST(test_sqrt),
+    ADD_TEST(test_pow),
+    ADD_TEST(test_sin),
+    ADD_TEST(test_cos),
+    ADD_TEST(test_tan),
+    ADD_TEST(test_atan),
+    ADD_TEST(test_exp),
+    ADD_TEST(test_log),
+    ADD_TEST(test_logabs),
+    ADD_TEST(test_sinh),
+    ADD_TEST(test_cosh),
+    ADD_TEST(test_tanh),
+    ADD_TEST(test_atanh),
+    ADD_TEST(test_grad_1),
+    ADD_TEST(test_hess_1),
+};
 
