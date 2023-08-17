@@ -73,6 +73,8 @@ test tests[N_TESTS] = {
 
 int main( int argn, const char *argv[] )
 {
+    int success = 0;
+
     for ( int i=0; i<N_TESTS; i++ ) {
         if ( tests[i].f ) {
             size_t name_size = strlen(tests[i].name);
@@ -85,10 +87,12 @@ int main( int argn, const char *argv[] )
             catch (test_exception &e) {
                 test_result = (char *) RED("FAILED");
                 printf("Test failed %s\n", e.location);
+                success = 1;
             }
             catch (...) {
                 test_result = (char *) RED("FAILED");
                 printf("Test function could not be executed!\n");
+                success = 1;
             }
 
             printf("%s ", tests[i].name);
