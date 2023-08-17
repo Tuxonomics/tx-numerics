@@ -9,6 +9,10 @@
 #include <cmath>
 
 
+// --------------------- //
+// Forward-mode Variable //
+// --------------------- //
+
 template <typename T>
 struct Fwd {
     T val;

@@ -1,7 +1,4 @@
-//
-// For testing this file individually, compile with
-// clang++ -o fwd_test -std=c++17 -DFWD_AD_MAIN fwd_test.cpp
-
+// fwd_test.cpp
 
 #include "fwd.hpp"
 #include "../finite_differences/finite_differences.hpp"
@@ -312,7 +309,6 @@ void test_grad_1( void )
 #undef n
 }
 
-#include <stdio.h>
 
 void test_hess_1( void )
 {
@@ -332,10 +328,6 @@ void test_hess_1( void )
     for ( size_t i=0; i<n; ++i ) {
         ASSERT( approx(g1[i], g2[i], 1e-6) );
     }
-
-    // for ( size_t i = 0; i < n*n; i++ ) {
-    //     printf("h[%zu] = %.4f\n", i, h2[i]);
-    // }
 
 #undef n
 }
