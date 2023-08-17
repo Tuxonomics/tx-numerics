@@ -1,0 +1,16 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: tuxonomics/numerics-utils:0.3
+
+    steps:
+      - checkout
+      - run: make tests-fwd
+      - run: make tests-rev
+
+workflows:
+  "Run Tests":
+    jobs:
+      - build
