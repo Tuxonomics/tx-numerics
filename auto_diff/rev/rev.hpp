@@ -73,9 +73,9 @@ void *mb_alloc(
     size_t size
 ) {
     assert( count <= mblocks->arrayCap );
-    assert( count % mblocks->elementSize == 0 );
+    assert( size == mblocks->elementSize );
 
-    if ( mblocks->curBlockPos + count > mblocks->arrayCap ) {
+    if ( (mblocks->curBlockPos + count) > (mblocks->arrayCap / mblocks->elementSize) ) {
         // alloc additional block
         if ( mblocks->curBlock >= mblocks->raw.len - 1 ) {
             unsigned char *new_block = (unsigned char *) malloc( mblocks->arrayCap );
@@ -104,7 +104,7 @@ void *mb_alloc(
         mblocks->curBlockPos  = 0;
     }
 
-    unsigned char *ptr = (unsigned char *) &(mblocks->raw.data[mblocks->curBlock][mblocks->curBlockPos]);
+    unsigned char *ptr = (unsigned char *) &(mblocks->raw.data[mblocks->curBlock][mblocks->curBlockPos * mblocks->elementSize]);
     mblocks->curBlockPos += count;
 
     return ptr;
@@ -259,13 +259,13 @@ void tp_free( Tape *t )
 
 Node * tp_alloc_node( Tape *t, size_t n )
 {
-    Node *node = (Node*) mb_alloc( &(t->nodes), sizeof(*node), 1 );
+    Node *node = (Node*) mb_alloc( &(t->nodes), 1, sizeof(*node) );
 
     if ( n > 0 ) {
         *node = nd_make( n );
 
-        node->derivs   = (double*)  mb_alloc( &(t->derivs),   sizeof(*(node->derivs)), n );
-        node->adj_ptrs = (double**) mb_alloc( &(t->arg_ptrs), sizeof(*(node->adj_ptrs)), n );
+        node->derivs   = (double*)  mb_alloc( &(t->derivs),   n, sizeof(*(node->derivs)) );
+        node->adj_ptrs = (double**) mb_alloc( &(t->arg_ptrs), n, sizeof(*(node->adj_ptrs)) );
     }
     else {
         memset( node, 0, sizeof(*node) );
@@ -277,31 +277,27 @@ Node * tp_alloc_node( Tape *t, size_t n )
 
 void tp_reset_adjoints( Tape *t )
 {
-    size_t nBlocks = t->nodes.curBlock;
-    size_t cap     = t->nodes.arrayCap;
-
-    if ( cap == 0 )
+    if ( t->nodes.arrayCap == 0 )
         return;
-
-    size_t nodeSize = t->nodes.elementSize;
-    size_t lastPos  = t->nodes.curBlockPos;
+    
+    size_t nBlocks = t->nodes.curBlock;
+    size_t lastPos = t->nodes.curBlockPos;
+    size_t cap     = t->nodes.arrayCap / t->nodes.elementSize;
 
     size_t blockIdx = 0;
     size_t nodeIdx  = 0;
 
     Node  *node;
-    unsigned char **data = t->nodes.raw.data;
-
-    assert( cap == nodeSize * t->nodes.numElements );
+    Node **data = (Node **) t->nodes.raw.data;
 
     for ( ; blockIdx < nBlocks; ++blockIdx ) {
-        for ( nodeIdx = 0; nodeIdx < cap; nodeIdx += nodeSize ) {
+        for ( nodeIdx = 0; nodeIdx < cap; nodeIdx++ ) {
             node = (Node *) (data[blockIdx] + nodeIdx);
             node->adjoint = 0;
         }
     }
 
-    for ( nodeIdx = 0; nodeIdx < lastPos; nodeIdx += nodeSize ) {
+    for ( nodeIdx = 0; nodeIdx < lastPos; nodeIdx++ ) {
         node = (Node *) (data[blockIdx] + nodeIdx);
         node->adjoint = 0;
     }
@@ -692,10 +688,12 @@ void backprop_between( Tape_Position start, Tape_Position end )
     nd_propagate_one( *node );
 
 #define BACKPROP_LOOP \
-    for ( int64_t nodeIdx = cap - nodeSize; nodeIdx >= 0; nodeIdx -= nodeSize ) { \
+    for ( int64_t nodeIdx = cap - 1; nodeIdx >= 0; nodeIdx-- ) { \
         NODE_PROPAGATION \
     }
 
+    if ( _TAPE.nodes.arrayCap == 0 )
+        return;
 
     int64_t block    = (int64_t)end.nodes.block;
     int64_t position = (int64_t)end.nodes.element;
@@ -703,25 +701,19 @@ void backprop_between( Tape_Position start, Tape_Position end )
     int64_t blockIdx = (int64_t)start.nodes.block;
     int64_t lastPos  = (int64_t)start.nodes.element;
 
-    int64_t cap      = (int64_t)_TAPE.nodes.arrayCap;
+    int64_t cap      = (int64_t)_TAPE.nodes.arrayCap / sizeof(Node);
 
-    if ( cap == 0 )
-        return;
-
-    int64_t nodeSize = sizeof(Node);
     int64_t nodeIdx  = 0;
 
-    assert( cap == nodeSize * (int64_t)_TAPE.nodes.numElements );
-
     Node   *node = NULL;
-    unsigned char  **data = _TAPE.nodes.raw.data;
+    Node  **data = (Node **) _TAPE.nodes.raw.data;
 
     int64_t firstBlockPos = 0;
 
     if ( blockIdx == block ) {
         firstBlockPos = position;
     }
-    for ( nodeIdx = lastPos - nodeSize; nodeIdx >= firstBlockPos; nodeIdx -= nodeSize ) {
+    for ( nodeIdx = lastPos - 1; nodeIdx >= firstBlockPos; nodeIdx -- ) {
         NODE_PROPAGATION
     }
 
