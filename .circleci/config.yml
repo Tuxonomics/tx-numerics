@@ -7,8 +7,8 @@ jobs:
 
     steps:
       - checkout
-      - run: make tests-fwd
-      - run: make tests-rev
+      - run: make tests-fwd-asan
+      - run: make tests-rev-asan
 
 workflows:
   "Run Tests":

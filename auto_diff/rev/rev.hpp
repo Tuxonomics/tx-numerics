@@ -39,7 +39,7 @@ typedef struct Node {
 
 typedef struct Memory_Blocks {
     struct {
-        char    **data;
+        unsigned char **data;
         size_t    len;
         size_t    cap;
     } raw;
@@ -78,15 +78,21 @@ void *mb_alloc(
     if ( mblocks->curBlockPos + count > mblocks->arrayCap ) {
         // alloc additional block
         if ( mblocks->curBlock >= mblocks->raw.len - 1 ) {
-            char *new_block = (char *) malloc( mblocks->arrayCap );
-
-            size_t new_cap = (size_t) (1.618 * mblocks->raw.cap);
+            unsigned char *new_block = (unsigned char *) malloc( mblocks->arrayCap );
 
             if ( mblocks->raw.cap == 0 || (! mblocks->raw.data) ) {
-                mblocks->raw.data = (char **) malloc(new_cap);
+                mblocks->raw.data = (unsigned char **) malloc( sizeof(*mblocks->raw.data) );
             }
-            else if ( mblocks->raw.cap < new_cap ) {
-                mblocks->raw.data = (char **) realloc(mblocks->raw.data, new_cap);
+            else if ( mblocks->raw.len >= mblocks->raw.cap - 1 ) {
+                size_t new_cap;
+                if ( mblocks->raw.cap == 1 ) {
+                    new_cap = 2;
+                }
+                else {
+                    new_cap = (size_t) (1.618 * mblocks->raw.cap);
+                }
+
+                mblocks->raw.data = (unsigned char **) realloc(mblocks->raw.data, new_cap * sizeof(*mblocks->raw.data));
                 mblocks->raw.cap  = new_cap;
             }
 
@@ -98,7 +104,7 @@ void *mb_alloc(
         mblocks->curBlockPos  = 0;
     }
 
-    char *ptr = (char *) &(mblocks->raw.data[mblocks->curBlock][mblocks->curBlockPos]);
+    unsigned char *ptr = (unsigned char *) &(mblocks->raw.data[mblocks->curBlock][mblocks->curBlockPos]);
     mblocks->curBlockPos += count;
 
     return ptr;
@@ -120,8 +126,8 @@ Memory_Blocks mb_make( size_t elementSize, size_t numElements )
     mblocks.numElements = numElements;
     mblocks.arrayCap    = (elementSize * numElements);
 
-    mblocks.raw.data    = (char **) malloc( sizeof(*mblocks.raw.data) );
-    char *ptr           = (char *)  malloc( mblocks.arrayCap );
+    mblocks.raw.data    = (unsigned char **) malloc( sizeof(*mblocks.raw.data) );
+    unsigned char *ptr  = (unsigned char *)  malloc( mblocks.arrayCap * sizeof(*ptr) );
     mblocks.raw.data[0] = ptr;
     mblocks.raw.len     = 1;
     mblocks.raw.cap     = 1;
@@ -158,8 +164,7 @@ typedef struct Block_Position {
 } Block_Position;
 
 
-// NOTE(jonas): this position refers to to the next open spot in the
-// block arena.
+// NOTE: this position refers to to the next open spot in the memory block.
 Block_Position mb_mark( Memory_Blocks *mblocks )
 {
     Block_Position pos;
@@ -285,7 +290,7 @@ void tp_reset_adjoints( Tape *t )
     size_t nodeIdx  = 0;
 
     Node  *node;
-    char **data = t->nodes.raw.data;
+    unsigned char **data = t->nodes.raw.data;
 
     assert( cap == nodeSize * t->nodes.numElements );
 
@@ -446,14 +451,7 @@ struct Rev {
     // unary operator overloads
 
     Rev& operator=( double newVal );
-    // TODO: might be necessary?
-    // Rev& operator=( Rev newVal );
 
-
-    // TODO(jonas): what outcome to expect?
-    // do we need
-    // *this = 0.0 - *this; ??
-    // Stan has the same behavior as below.
     Rev operator-() const
     {
         return 0.0 - *this;
@@ -530,12 +528,14 @@ struct Rev {
 };
 
 
-void rev_print( Rev v, char *name = NULL) {
+void rev_print( Rev v, const char *name = NULL) {
     printf("%s = {\n", name);
     printf("\tval  = %.4f\n", v.val);
     printf("\tnode = {\n");
-    printf("\t\tn   = %zu\n", v.node->n);
-    printf("\t\tadj = %.4f\n", v.node->adjoint);
+    printf("\t\tn        = %zu\n", v.node->n);
+    printf("\t\tderivs   = ["); for (size_t i = 0; i < v.node->n; i++) { printf("%.4f, ", v.node->derivs[i]); } printf("]\n");
+    printf("\t\tadj_ptrs = ["); for (size_t i = 0; i < v.node->n; i++) { printf("%p, ", (void*) v.node->adj_ptrs[i]); } printf("]\n");
+    printf("\t\tadj      = %.4f (%p)\n", v.node->adjoint, (void*) &v.node->adjoint);
     printf("\t}");
     printf("}\n");
 }
@@ -613,7 +613,7 @@ double rev_adjoint( Rev v )
 }
 
 
-// access to local derivatives, mostly for debugging bounds check
+// accessing local derivatives with bounds check
 
 inline
 double& rev_deriv( Rev v )
@@ -647,7 +647,7 @@ double& rev_deriv_n( Rev v, size_t n )
 }
 
 
-// access to child node adjoints, mostly for debugging bounds check
+// accessing child node adjoints with bounds check
 
 inline
 double * rev_adj( Rev v )
@@ -678,5 +678,386 @@ double * rev_adj_n( Rev v, size_t n )
 {
     assert( n < v.node->n );
     return v.node->adj_ptrs[0];
+}
+
+
+// core function where back propagation of takes place
+// "Modern Computational Finance - AAD and Parallel Simuations", p. 389
+
+void backprop_between( Tape_Position start, Tape_Position end )
+{
+
+#define NODE_PROPAGATION \
+    node = (Node *) (data[blockIdx] + nodeIdx); \
+    nd_propagate_one( *node );
+
+#define BACKPROP_LOOP \
+    for ( int64_t nodeIdx = cap - nodeSize; nodeIdx >= 0; nodeIdx -= nodeSize ) { \
+        NODE_PROPAGATION \
+    }
+
+
+    int64_t block    = (int64_t)end.nodes.block;
+    int64_t position = (int64_t)end.nodes.element;
+
+    int64_t blockIdx = (int64_t)start.nodes.block;
+    int64_t lastPos  = (int64_t)start.nodes.element;
+
+    int64_t cap      = (int64_t)_TAPE.nodes.arrayCap;
+
+    if ( cap == 0 )
+        return;
+
+    int64_t nodeSize = sizeof(Node);
+    int64_t nodeIdx  = 0;
+
+    assert( cap == nodeSize * (int64_t)_TAPE.nodes.numElements );
+
+    Node   *node = NULL;
+    unsigned char  **data = _TAPE.nodes.raw.data;
+
+    int64_t firstBlockPos = 0;
+
+    if ( blockIdx == block ) {
+        firstBlockPos = position;
+    }
+    for ( nodeIdx = lastPos - nodeSize; nodeIdx >= firstBlockPos; nodeIdx -= nodeSize ) {
+        NODE_PROPAGATION
+    }
+
+    blockIdx -= 1;
+
+    for ( ; blockIdx > block; --blockIdx ) {
+        BACKPROP_LOOP
+    }
+
+    if (blockIdx == block) {
+        BACKPROP_LOOP
+    }
+
+#undef NODE_PROPAGATION
+#undef BACKPROP_LOOP
+}
+
+
+inline
+void backprop_until( Rev v, Tape_Position tp )
+{
+    v.node->adjoint = 1.0;
+    backprop_between( _TAPE_mark(), tp );
+}
+
+inline
+void backprop_to_mark( Rev v, Tape_Position tp ) {
+    backprop_until( v, tp );
+}
+
+inline
+void backprop( Rev v ) {
+    backprop_until( v, { 0 } );
+}
+
+
+
+// Binary operations
+// Equivalent to
+// "Modern Computational Finance - AAD and Parallel Simuations", p. 393
+
+inline
+Rev Rev::operator+( Rev rhs )
+{
+    double resVal = val + rhs.val;
+
+    Rev res( node, rhs.node, resVal );
+
+    rev_deriv_l( res ) = 1.0;
+    rev_deriv_r( res ) = 1.0;
+
+    return res;
+}
+
+inline
+Rev Rev::operator+( double rhs )
+{
+    double resVal = val + rhs;
+
+    Rev res( node, resVal );
+
+    rev_deriv( res ) = 1.0;
+
+    return res;
+}
+
+inline
+Rev operator+( double lhs, Rev rhs )
+{
+    return rhs + lhs;
+}
+
+
+inline
+Rev Rev::operator-( Rev rhs )
+{
+    double resVal = val - rhs.val;
+
+    Rev res( node, rhs.node, resVal );
+
+    rev_deriv_l( res ) = 1.0;
+    rev_deriv_r( res ) = -1.0;
+
+    return res;
+}
+
+inline
+Rev Rev::operator-( double rhs )
+{
+    double resVal = val - rhs;
+
+    Rev res( node, resVal );
+
+    rev_deriv( res ) = 1.0;
+
+    return res;
+}
+
+inline
+Rev operator-( double lhs, Rev rhs )
+{
+    double resVal = lhs - rhs.val;
+
+    Rev res( rhs.node, resVal );
+
+    rev_deriv( res ) = -1.0;
+
+    return res;
+}
+
+
+inline
+Rev Rev::operator*( Rev rhs )
+{
+    double resVal = val * rhs.val;
+
+    Rev res( node, rhs.node, resVal );
+
+    rev_deriv_l( res ) = rhs.val;
+    rev_deriv_r( res ) = val;
+
+    assert( isfinite(rev_deriv_l(res)) );
+    assert( isfinite(rev_deriv_r(res)) );
+
+    return res;
+}
+
+inline
+Rev Rev::operator*( double rhs )
+{
+    double resVal = val * rhs;
+
+    Rev res( node, resVal );
+
+    rev_deriv( res ) = rhs;
+
+    assert( isfinite(rev_deriv(res)) );
+
+    return res;
+}
+
+inline
+Rev operator*( double lhs, Rev rhs )
+{
+    return rhs * lhs;
+}
+
+
+inline
+Rev Rev::operator/( Rev rhs )
+{
+    double resVal = val / rhs.val;
+
+    Rev res( node, rhs.node, resVal );
+
+    double irhs = 1.0 / rhs.val;
+
+    rev_deriv_l( res ) = irhs;
+    rev_deriv_r( res ) = -val * irhs * irhs;
+
+    assert( isfinite(rev_deriv_l(res)) );
+    assert( isfinite(rev_deriv_r(res)) );
+
+    return res;
+}
+
+inline
+Rev Rev::operator/( double rhs )
+{
+    double resVal = val / rhs;
+
+    Rev res( node, resVal );
+
+    rev_deriv( res ) = 1.0 / rhs;
+
+    assert( isfinite(rev_deriv(res)) );
+
+    return res;
+}
+
+inline
+Rev operator/( double lhs, Rev rhs )
+{
+    double resVal = lhs / rhs.val;
+
+    Rev res( rhs.node, resVal );
+
+    rev_deriv( res ) = -lhs / (rhs.val * rhs.val);
+
+    assert( isfinite(rev_deriv(res)) );
+
+    return res;
+}
+
+
+Rev& Rev::operator+=( Rev rhs )
+{
+    *this = *this + rhs;
+    return *this;
+}
+
+Rev& Rev::operator+=( double rhs )
+{
+    *this = *this + rhs;
+    return *this;
+}
+
+Rev& Rev::operator-=( Rev rhs )
+{
+    *this = *this - rhs;
+    return *this;
+}
+
+Rev& Rev::operator-=( double rhs )
+{
+    *this = *this - rhs;
+    return *this;
+}
+
+Rev& Rev::operator*=( Rev rhs )
+{
+    *this = *this * rhs;
+    return *this;
+}
+
+Rev& Rev::operator*=( double rhs )
+{
+    *this = *this * rhs;
+    return *this;
+}
+
+Rev& Rev::operator/=( Rev rhs )
+{
+    *this = *this / rhs;
+    return *this;
+}
+
+Rev& Rev::operator/=( double rhs )
+{
+    *this = *this / rhs;
+    return *this;
+}
+
+
+bool operator==( Rev lhs, Rev rhs )
+{
+    return lhs.val == rhs.val;
+}
+
+bool operator==( Rev lhs, double rhs )
+{
+    return lhs.val == rhs;
+}
+
+bool operator==( double lhs, Rev rhs )
+{
+    return lhs == rhs.val;
+}
+
+
+bool operator!=( Rev lhs, Rev rhs )
+{
+    return lhs.val != rhs.val;
+}
+
+bool operator!=( Rev lhs, double rhs )
+{
+    return lhs.val != rhs;
+}
+
+bool operator!=( double lhs, Rev rhs )
+{
+    return lhs != rhs.val;
+}
+
+
+bool operator<( Rev lhs, Rev rhs )
+{
+    return lhs.val < rhs.val;
+}
+
+bool operator<( Rev lhs, double rhs )
+{
+    return lhs.val < rhs;
+}
+
+bool operator<( double lhs, Rev rhs )
+{
+    return lhs < rhs.val;
+}
+
+
+bool operator>( Rev lhs, Rev rhs )
+{
+    return lhs.val > rhs.val;
+}
+
+bool operator>( Rev lhs, double rhs )
+{
+    return lhs.val > rhs;
+}
+
+bool operator>( double lhs, Rev rhs )
+{
+    return lhs > rhs.val;
+}
+
+
+bool operator<=( Rev lhs, Rev rhs )
+{
+    return lhs.val <= rhs.val;
+}
+
+bool operator<=( Rev lhs, double rhs )
+{
+    return lhs.val <= rhs;
+}
+
+bool operator<=( double lhs, Rev rhs )
+{
+    return lhs <= rhs.val;
+}
+
+
+bool operator>=( Rev lhs, Rev rhs )
+{
+    return lhs.val >= rhs.val;
+}
+
+bool operator>=( Rev lhs, double rhs )
+{
+    return lhs.val >= rhs;
+}
+
+bool operator>=( double lhs, Rev rhs )
+{
+    return lhs >= rhs.val;
 }
 
