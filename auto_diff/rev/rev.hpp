@@ -835,8 +835,8 @@ Rev Rev::operator*( Rev rhs )
     rev_deriv_l( res ) = rhs.val;
     rev_deriv_r( res ) = val;
 
-    assert( isfinite(rev_deriv_l(res)) );
-    assert( isfinite(rev_deriv_r(res)) );
+    assert( std::isfinite(rev_deriv_l(res)) );
+    assert( std::isfinite(rev_deriv_r(res)) );
 
     return res;
 }
@@ -850,7 +850,7 @@ Rev Rev::operator*( double rhs )
 
     rev_deriv( res ) = rhs;
 
-    assert( isfinite(rev_deriv(res)) );
+    assert( std::isfinite(rev_deriv(res)) );
 
     return res;
 }
@@ -874,8 +874,8 @@ Rev Rev::operator/( Rev rhs )
     rev_deriv_l( res ) = irhs;
     rev_deriv_r( res ) = -val * irhs * irhs;
 
-    assert( isfinite(rev_deriv_l(res)) );
-    assert( isfinite(rev_deriv_r(res)) );
+    assert( std::isfinite(rev_deriv_l(res)) );
+    assert( std::isfinite(rev_deriv_r(res)) );
 
     return res;
 }
@@ -889,7 +889,7 @@ Rev Rev::operator/( double rhs )
 
     rev_deriv( res ) = 1.0 / rhs;
 
-    assert( isfinite(rev_deriv(res)) );
+    assert( std::isfinite(rev_deriv(res)) );
 
     return res;
 }
@@ -903,7 +903,7 @@ Rev operator/( double lhs, Rev rhs )
 
     rev_deriv( res ) = -lhs / (rhs.val * rhs.val);
 
-    assert( isfinite(rev_deriv(res)) );
+    assert( std::isfinite(rev_deriv(res)) );
 
     return res;
 }
