@@ -1,4 +1,4 @@
-// rev.hpp
+// rev_t.hpp
 //
 // A scalar-based implementation of reverse mode automatic differentiation.
 //
@@ -21,13 +21,14 @@
 
 // "Modern Computational Finance - AAD and Parallel Simuations", p. 361
 
-typedef struct Node {
+template <typename T>
+struct Node {
     size_t     n;
-    double    *derivs;     // derivatives of node wrt. parent nodes
-    double   **adj_ptrs;   // pointers to adjoints of parent nodes
+    T         *derivs;     // derivatives of node wrt. parent nodes
+    T        **adj_ptrs;   // pointers to adjoints of parent nodes
 
-    double     adjoint;    // derivative of node wrt to variable that "started" the reverse pass
-} Node;
+    T          adjoint;    // derivative of node wrt to variable that "started" the reverse pass
+};
 
 
 // ---------------------- //
@@ -37,51 +38,48 @@ typedef struct Node {
 // Similar to the blocklist in
 // "Modern Computational Finance - AAD and Parallel Simuations", p. 363
 
-typedef struct Memory_Blocks {
+template <typename T>
+struct Memory_Blocks {
     struct {
-        unsigned char **data;
+        T       **data;
         size_t    len;
         size_t    cap;
     } raw;
 
-    size_t elementSize;
-    size_t numElements;
-    size_t arrayCap;
+    size_t block_size;
 
-    size_t curBlock;
-    size_t curBlockPos;
-} Memory_Blocks;
+    size_t cur_block;
+    size_t cur_block_pos;
+};
 
 
-void mb_print( Memory_Blocks mb, const char *name )
+template <typename T>
+void mb_print( Memory_Blocks<T> mb, const char *name )
 {
     printf("(%s) = {\n", name);
-    printf("\traw.len   = %zu\n", mb.raw.len);
-    printf("\traw.cap   = %zu\n\n", mb.raw.cap);
-    printf("\telementSize = %zu\n", mb.elementSize);
-    printf("\tnumElements = %zu\n", mb.numElements);
-    printf("\tarrayCap    = %zu\n\n", mb.arrayCap);
-    printf("\tcurBlock    = %zu\n", mb.curBlock);
-    printf("\tcurBlockPos = %zu\n\n", mb.curBlockPos);
+    printf("\traw.len     = %zu\n", mb.raw.len);
+    printf("\traw.cap     = %zu\n\n", mb.raw.cap);
+    printf("\tblock_size  = %zu\n\n", mb.block_size);
+    printf("\tcur_block    = %zu\n", mb.cur_block);
+    printf("\tcur_block_pos = %zu\n\n", mb.cur_block_pos);
     printf("}\n");
 }
 
 
-void *mb_alloc(
-    Memory_Blocks *mblocks,
-    size_t count,
-    size_t size
+template <typename T>
+T *mb_alloc(
+    Memory_Blocks<T> *mblocks,
+    size_t count
 ) {
-    assert( count <= mblocks->arrayCap );
-    assert( size == mblocks->elementSize );
+    assert( count <= mblocks->block_size );
 
-    if ( (mblocks->curBlockPos + count) > (mblocks->arrayCap / mblocks->elementSize) ) {
+    if ( (mblocks->cur_block_pos + count) > mblocks->block_size ) {
         // alloc additional block
-        if ( mblocks->curBlock >= mblocks->raw.len - 1 ) {
-            unsigned char *new_block = (unsigned char *) malloc( mblocks->arrayCap );
+        if ( mblocks->cur_block >= mblocks->raw.len - 1 ) {
+            T *new_block = (T *) malloc( mblocks->block_size * sizeof(T) );
 
             if ( mblocks->raw.cap == 0 || (! mblocks->raw.data) ) {
-                mblocks->raw.data = (unsigned char **) malloc( sizeof(*mblocks->raw.data) );
+                mblocks->raw.data = (T **) malloc( sizeof(*mblocks->raw.data) );
             }
             else if ( mblocks->raw.len >= mblocks->raw.cap - 1 ) {
                 size_t new_cap;
@@ -92,7 +90,7 @@ void *mb_alloc(
                     new_cap = (size_t) (1.618 * mblocks->raw.cap);
                 }
 
-                mblocks->raw.data = (unsigned char **) realloc(mblocks->raw.data, new_cap * sizeof(*mblocks->raw.data));
+                mblocks->raw.data = (T**) realloc(mblocks->raw.data, new_cap * sizeof(*mblocks->raw.data));
                 mblocks->raw.cap  = new_cap;
             }
 
@@ -100,48 +98,49 @@ void *mb_alloc(
             mblocks->raw.len++;
         }
 
-        mblocks->curBlock    += 1;
-        mblocks->curBlockPos  = 0;
+        mblocks->cur_block    += 1;
+        mblocks->cur_block_pos = 0;
     }
 
-    unsigned char *ptr = (unsigned char *) &(mblocks->raw.data[mblocks->curBlock][mblocks->curBlockPos * mblocks->elementSize]);
-    mblocks->curBlockPos += count;
+    T *ptr = (T *) &(mblocks->raw.data[mblocks->cur_block][mblocks->cur_block_pos]);
+    mblocks->cur_block_pos += count;
 
     return ptr;
 }
 
 
-void mb_reset( Memory_Blocks *mblocks )
+template <typename T>
+void mb_reset( Memory_Blocks<T> *mblocks )
 {
-    mblocks->curBlock    = 0;
-    mblocks->curBlockPos = 0;
+    mblocks->cur_block     = 0;
+    mblocks->cur_block_pos = 0;
 }
 
 
-Memory_Blocks mb_make( size_t elementSize, size_t numElements )
+template <typename T>
+Memory_Blocks<T> mb_make( size_t block_size )
 {
-    Memory_Blocks mblocks;
+    Memory_Blocks<T> mblocks;
 
-    mblocks.elementSize = elementSize;
-    mblocks.numElements = numElements;
-    mblocks.arrayCap    = (elementSize * numElements);
+    mblocks.block_size  = block_size;
 
-    mblocks.raw.data    = (unsigned char **) malloc( sizeof(*mblocks.raw.data) );
-    unsigned char *ptr  = (unsigned char *)  malloc( mblocks.arrayCap * sizeof(*ptr) );
+    mblocks.raw.data    = (T **) malloc( sizeof(*mblocks.raw.data) );
+    T *ptr              = (T *)  malloc( mblocks.block_size * sizeof(*ptr) );
     mblocks.raw.data[0] = ptr;
     mblocks.raw.len     = 1;
     mblocks.raw.cap     = 1;
 
-    mblocks.curBlock    = 0;
-    mblocks.curBlockPos = 0;
+    mblocks.cur_block     = 0;
+    mblocks.cur_block_pos = 0;
 
     return mblocks;
 }
 
 
-void mb_free( Memory_Blocks *mblocks )
+template <typename T>
+void mb_free( Memory_Blocks<T> *mblocks )
 {
-    for ( size_t i=0; i < mblocks->raw.len; ++i ) {
+    for ( size_t i = 0; i < mblocks->raw.len; ++i ) {
         free( mblocks->raw.data[i] );
     }
 
@@ -151,10 +150,11 @@ void mb_free( Memory_Blocks *mblocks )
 }
 
 
-void mb_clear( Memory_Blocks *mblocks )
+template <typename T>
+void mb_clear( Memory_Blocks<T> *mblocks )
 {
-    mblocks->curBlock    = 0;
-    mblocks->curBlockPos = 0;
+    mblocks->cur_block     = 0;
+    mblocks->cur_block_pos = 0;
 }
 
 
@@ -164,20 +164,22 @@ typedef struct Block_Position {
 } Block_Position;
 
 
-// NOTE: this position refers to to the next open spot in the memory block.
-Block_Position mb_mark( Memory_Blocks *mblocks )
+// next open spot in the memory block
+template <typename T>
+Block_Position mb_mark( Memory_Blocks<T> *mblocks )
 {
     Block_Position pos;
-    pos.block   = mblocks->curBlock;
-    pos.element = mblocks->curBlockPos;
+    pos.block   = mblocks->cur_block;
+    pos.element = mblocks->cur_block_pos;
     return pos;
 }
 
 
-void mb_rewind( Memory_Blocks *mblocks, Block_Position p )
+template <typename T>
+void mb_rewind( Memory_Blocks<T> *mblocks, Block_Position p )
 {
-    mblocks->curBlock    = p.block;
-    mblocks->curBlockPos = p.element;
+    mblocks->cur_block     = p.block;
+    mblocks->cur_block_pos = p.element;
 }
 
 
@@ -185,9 +187,10 @@ void mb_rewind( Memory_Blocks *mblocks, Block_Position p )
 // Node //
 // ---- //
 
-Node nd_make( size_t n )
+template <typename T>
+Node<T> nd_make( size_t n )
 {
-    Node node;
+    Node<T> node;
 
     node.n = n;
 
@@ -199,7 +202,8 @@ Node nd_make( size_t n )
 }
 
 
-void nd_propagate_one( Node node )
+template <typename T>
+void nd_propagate_one( Node<T> node )
 {
     if ( ! node.n || (node.adjoint == 0.0) )
         return;
@@ -218,16 +222,18 @@ void nd_propagate_one( Node node )
 // Similar to the tape in
 // "Modern Computational Finance - AAD and Parallel Simuations", p. 376
 
-typedef struct Tape {
-    Memory_Blocks   nodes;
-    Memory_Blocks   derivs;
-    Memory_Blocks   arg_ptrs;
+template <typename T>
+struct Tape {
+    Memory_Blocks<Node<T>>  nodes;
+    Memory_Blocks<T>        derivs;
+    Memory_Blocks<T*>       arg_ptrs;
 
-    char            _pad[64];
-} Tape;
+    char _pad[64];
+};
 
 
-void tp_print( Tape t, const char * name )
+template <typename T>
+void tp_print( Tape<T> t, const char * name )
 {
     printf("(%s) = {\n", name);
     mb_print(t.nodes, "nodes");
@@ -237,19 +243,21 @@ void tp_print( Tape t, const char * name )
 }
 
 
-Tape tp_make( size_t num_nodes, size_t num_derivs )
+template <typename T>
+Tape<T> tp_make( size_t num_nodes, size_t num_derivs )
 {
-    Tape t;
+    Tape<T> t;
 
-    t.nodes    = mb_make( sizeof(Node),    num_nodes );
-    t.derivs   = mb_make( sizeof(double),  num_derivs );
-    t.arg_ptrs = mb_make( sizeof(double*), num_derivs );
+    t.nodes    = mb_make<Node<T>>( num_nodes );
+    t.derivs   = mb_make<T>( num_derivs );
+    t.arg_ptrs = mb_make<T*>( num_derivs );
 
     return t;
 }
 
 
-void tp_free( Tape *t )
+template <typename T>
+void tp_free( Tape<T> *t )
 {
     mb_free( &(t->nodes)   );
     mb_free( &(t->derivs)  );
@@ -257,15 +265,16 @@ void tp_free( Tape *t )
 }
 
 
-Node * tp_alloc_node( Tape *t, size_t n )
+template <typename T>
+Node<T> * tp_alloc_node( Tape<T> *t, size_t n )
 {
-    Node *node = (Node*) mb_alloc( &(t->nodes), 1, sizeof(*node) );
+    Node<T> *node = mb_alloc( &(t->nodes), 1 );
 
     if ( n > 0 ) {
-        *node = nd_make( n );
+        *node = nd_make<T>( n );
 
-        node->derivs   = (double*)  mb_alloc( &(t->derivs),   n, sizeof(*(node->derivs)) );
-        node->adj_ptrs = (double**) mb_alloc( &(t->arg_ptrs), n, sizeof(*(node->adj_ptrs)) );
+        node->derivs   = mb_alloc( &(t->derivs),   n );
+        node->adj_ptrs = mb_alloc( &(t->arg_ptrs), n );
     }
     else {
         memset( node, 0, sizeof(*node) );
@@ -275,36 +284,38 @@ Node * tp_alloc_node( Tape *t, size_t n )
 }
 
 
-void tp_reset_adjoints( Tape *t )
+template <typename T>
+void tp_reset_adjoints( Tape<T> *t )
 {
-    if ( t->nodes.arrayCap == 0 )
+    if ( t->nodes.block_size == 0 )
         return;
-    
-    size_t nBlocks = t->nodes.curBlock;
-    size_t lastPos = t->nodes.curBlockPos;
-    size_t cap     = t->nodes.arrayCap / t->nodes.elementSize;
 
-    size_t blockIdx = 0;
-    size_t nodeIdx  = 0;
+    size_t n_block    = t->nodes.cur_block;
+    size_t last_pos   = t->nodes.cur_block_pos;
+    size_t block_size = t->nodes.block_size;
 
-    Node  *node;
-    Node **data = (Node **) t->nodes.raw.data;
+    size_t block_idx = 0;
+    size_t node_idx  = 0;
 
-    for ( ; blockIdx < nBlocks; ++blockIdx ) {
-        for ( nodeIdx = 0; nodeIdx < cap; nodeIdx++ ) {
-            node = (Node *) (data[blockIdx] + nodeIdx);
+    Node<T>  *node;
+    Node<T> **data = (Node<T> **) t->nodes.raw.data;
+
+    for ( ; block_idx < n_block; ++block_idx ) {
+        for ( node_idx = 0; node_idx < block_size; node_idx++ ) {
+            node = data[block_idx] + node_idx;
             node->adjoint = 0;
         }
     }
 
-    for ( nodeIdx = 0; nodeIdx < lastPos; nodeIdx++ ) {
-        node = (Node *) (data[blockIdx] + nodeIdx);
+    for ( node_idx = 0; node_idx < last_pos; node_idx++ ) {
+        node = data[block_idx] + node_idx;
         node->adjoint = 0;
     }
 }
 
 
-void tp_clear( Tape *t )
+template <typename T>
+void tp_clear( Tape<T> *t )
 {
     mb_clear( &(t->nodes) );
     mb_clear( &(t->derivs) );
@@ -312,14 +323,15 @@ void tp_clear( Tape *t )
 }
 
 
-typedef struct Tape_Position {
+struct Tape_Position {
     Block_Position nodes;
     Block_Position derivs;
     Block_Position arg_ptrs;
-} Tape_Position;
+};
 
 
-Tape_Position tp_mark( Tape *t )
+template <typename T>
+Tape_Position tp_mark( Tape<T> *t )
 {
     Tape_Position tp;
     tp.nodes    = mb_mark( &(t->nodes) );
@@ -329,7 +341,8 @@ Tape_Position tp_mark( Tape *t )
 }
 
 
-void tp_rewind( Tape *t, Tape_Position tp )
+template <typename T>
+void tp_rewind( Tape<T> *t, Tape_Position tp )
 {
     mb_rewind( &(t->nodes),    tp.nodes );
     mb_rewind( &(t->derivs),   tp.derivs );
@@ -339,53 +352,97 @@ void tp_rewind( Tape *t, Tape_Position tp )
 
 
 // TODO: use TLS
-Tape   _TAPE      = { 0 };
+Tape<float>    _TAPE_f = { 0 };
+Tape<double>   _TAPE_d = { 0 };
+
 const
 size_t _NUM_NODES = 1e4;
 
 
+template <typename T>
+Tape<T> *get_tape( void )
+{
+    return NULL;
+}
 
+template <>
+Tape<float> *get_tape( void )
+{
+    return &_TAPE_f;
+}
+
+template <>
+Tape<double> *get_tape( void )
+{
+    return &_TAPE_d;
+}
+
+
+
+template <typename T>
 void _TAPE_init( void )
 {
-    _TAPE = tp_make( _NUM_NODES, 3*_NUM_NODES );
+    Tape<T> *t = get_tape<T>();
+    *t = tp_make<T>( _NUM_NODES, 3*_NUM_NODES );
 }
 
+
+template <typename T>
 void _TAPE_clear( void )
 {
-    tp_clear( &_TAPE );
+    Tape<T> *t = get_tape<T>();
+    tp_clear( t );
 }
 
-void acquire_tape( const Tape *newT )
+
+template <typename T>
+void acquire_tape( const Tape<T> *new_tape )
 {
-    _TAPE = *newT;
+    Tape<T> *t = get_tape<T>();
+    *t = *new_tape;
 }
 
-void release_tape( Tape *old )
+
+template <typename T>
+void release_tape( Tape<T> *old )
 {
-    *old = _TAPE;
+    Tape<T> *t = get_tape<T>();
+    old = t;
 #if DEBUG
-    memset(&_TAPE, 0, sizeof(Tape));
+    memset(t, 0, sizeof(Tape<T>));
 #endif
 }
 
+
+template <typename T>
 Tape_Position _TAPE_mark( void )
 {
-    return tp_mark( &_TAPE );
+    Tape<T> *t = get_tape<T>();
+    return tp_mark( t );
 }
 
+
+template <typename T>
 void _TAPE_rewind( Tape_Position tp )
 {
-    tp_rewind( &_TAPE, tp );
+    Tape<T> *t = get_tape<T>();
+    tp_rewind( t, tp );
 }
 
+
+template <typename T>
 void _TAPE_deinit( void )
 {
-    tp_free( &_TAPE );
+    Tape<T> *t = get_tape<T>();
+    tp_free( t );
 }
 
+
+template <typename T>
 void _TAPE_reset_adjoints( void )
 {
-    tp_reset_adjoints( &_TAPE );
+    Tape<T> *t = get_tape<T>();
+    tp_reset_adjoints( t );
 }
 
 
@@ -397,42 +454,50 @@ void _TAPE_reset_adjoints( void )
 // "Modern Computational Finance - AAD and Parallel Simuations", p. 379
 
 
+template <typename T>
 struct Rev {
-    double  val;
-    Node   *node;
+    T        val;
+    Node<T> *node;
 
 
     Rev( void ) {};
 
 
     // produces a leaf node on tape
-    Rev( double val ) : val( val )
+    Rev( T val ) : val( val )
     {
-        node = tp_alloc_node( &_TAPE, 0 );
+        Tape<T> *t = get_tape<T>();
+        node = tp_alloc_node( t, 0 );
     }
 
 
     // unary operation
-    Rev( Node *arg, double val ) : val( val )
+    Rev( Node<T> *arg, T val ) : val( val )
     {
-        node = tp_alloc_node( &_TAPE, 1 );
+        Tape<T> *t = get_tape<T>();
+
+        node = tp_alloc_node( t, 1 );
         node->adj_ptrs[0] = &(arg->adjoint);
     }
 
 
     // binary operation
-    Rev( Node *lhs, Node *rhs, double val ) : val( val )
+    Rev( Node<T> *lhs, Node<T> *rhs, T val ) : val( val )
     {
-        node = tp_alloc_node( &_TAPE, 2 );
+        Tape<T> *t = get_tape<T>();
+
+        node = tp_alloc_node( t, 2 );
         node->adj_ptrs[0] = &(lhs->adjoint);
         node->adj_ptrs[1] = &(rhs->adjoint);
     }
 
 
     // ternary operation
-    Rev( Node *n1, Node *n2, Node *n3, double val ) : val( val )
+    Rev( Node<T> *n1, Node<T> *n2, Node<T> *n3, T val ) : val( val )
     {
-        node = tp_alloc_node( &_TAPE, 3 );
+        Tape<T> *t = get_tape<T>();
+
+        node = tp_alloc_node( t, 3 );
         node->adj_ptrs[0] = &(n1->adjoint);
         node->adj_ptrs[1] = &(n2->adjoint);
         node->adj_ptrs[2] = &(n3->adjoint);
@@ -440,13 +505,13 @@ struct Rev {
 
 
     // explicit to avoid silent casting / conversion
-    explicit operator double& ()       { return val; }
-    explicit operator double  () const { return val; }
+    explicit operator T& ()       { return val; }
+    explicit operator T  () const { return val; }
 
 
     // unary operator overloads
 
-    Rev& operator=( double newVal );
+    Rev& operator=( T newVal );
 
     Rev operator-() const
     {
@@ -462,69 +527,35 @@ struct Rev {
     // binary operator overloads
 
     Rev operator+( Rev rhs );
-    Rev operator+( double rhs );
-    friend
-    Rev operator+( double lhs, Rev rhs );
-
+    Rev operator+( T   rhs );
 
     Rev operator-( Rev rhs );
-    Rev operator-( double rhs );
-    friend
-    Rev operator-( double lhs, Rev rhs );
-
+    Rev operator-( T   rhs );
 
     Rev operator*( Rev rhs );
-    Rev operator*( double rhs );
-    friend
-    Rev operator*( double lhs, Rev rhs );
+    Rev operator*( T   rhs );
 
 
     Rev operator/( Rev rhs );
-    Rev operator/( double rhs );
-    friend
-    Rev operator/( double lhs, Rev rhs );
+    Rev operator/( T   rhs );
 
 
     Rev& operator+=( Rev rhs );
-    Rev& operator+=( double rhs );
+    Rev& operator+=( T   rhs );
 
     Rev& operator-=( Rev rhs );
-    Rev& operator-=( double rhs );
+    Rev& operator-=( T   rhs );
 
     Rev& operator*=( Rev rhs );
-    Rev& operator*=( double rhs );
+    Rev& operator*=( T   rhs );
 
     Rev& operator/=( Rev rhs );
-    Rev& operator/=( double rhs );
-
-
-    friend bool operator==( Rev lhs,    Rev rhs );
-    friend bool operator==( Rev lhs,    double rhs );
-    friend bool operator==( double lhs, Rev rhs );
-
-    friend bool operator!=( Rev lhs,    Rev rhs );
-    friend bool operator!=( Rev lhs,    double rhs );
-    friend bool operator!=( double lhs, Rev rhs );
-
-    friend bool operator<( Rev lhs,    Rev rhs );
-    friend bool operator<( Rev lhs,    double rhs );
-    friend bool operator<( double lhs, Rev rhs );
-
-    friend bool operator>( Rev lhs,    Rev rhs );
-    friend bool operator>( Rev lhs,    double rhs );
-    friend bool operator>( double lhs, Rev rhs );
-
-    friend bool operator<=( Rev lhs,    Rev rhs );
-    friend bool operator<=( Rev lhs,    double rhs );
-    friend bool operator<=( double lhs, Rev rhs );
-
-    friend bool operator>=( Rev lhs,    Rev rhs );
-    friend bool operator>=( Rev lhs,    double rhs );
-    friend bool operator>=( double lhs, Rev rhs );
+    Rev& operator/=( T   rhs );
 };
 
 
-void rev_print( Rev v, const char *name = NULL) {
+template <typename T>
+void rev_print( Rev<T> v, const char *name = NULL) {
     printf("%s = {\n", name);
     printf("\tval  = %.4f\n", v.val);
     printf("\tnode = {\n");
@@ -537,46 +568,54 @@ void rev_print( Rev v, const char *name = NULL) {
 }
 
 
-Rev& Rev::operator=( double newVal )
+template <typename T>
+Rev<T>& Rev<T>::operator=( T newVal )
 {
+    Tape<T> *t = get_tape<T>();
+
     val  = newVal;
-    node = tp_alloc_node( &_TAPE, 0 );
+    node = tp_alloc_node( t, 0 );
     return *this;
 }
 
 
+template <typename T>
 inline
-Rev rev_make( double val, size_t n )
+Rev<T> rev_make( T val, size_t n )
 {
-    Rev v;
+    Tape<T> *t = get_tape<T>();
+
+    Rev<T> v;
 
     v.val  = val;
-    v.node = tp_alloc_node( &_TAPE, n );
+    v.node = tp_alloc_node( t, n );
 
     return v;
 }
 
 
+template <typename T>
 inline
-Rev rev_make_unary( Node *arg, double val )
+Rev<T> rev_make_unary( Node<T> *arg, T val )
 {
-    Rev v;
+    Rev<T> v;
 
     v.val  = val;
-    v.node = tp_alloc_node( &_TAPE, 1 );
+    v.node = tp_alloc_node( get_tape<T>(), 1 );
     v.node->adj_ptrs[0] = &(arg->adjoint);
 
     return v;
 }
 
 
+template <typename T>
 inline
-Rev rev_make_binary( Node *lhs, Node *rhs, double val )
+Rev<T> rev_make_binary( Node<T> *lhs, Node<T> *rhs, T val )
 {
-    Rev v;
+    Rev<T> v;
 
     v.val  = val;
-    v.node = tp_alloc_node( &_TAPE, 2 );
+    v.node = tp_alloc_node( get_tape<T>(), 2 );
     v.node->adj_ptrs[0] = &(lhs->adjoint);
     v.node->adj_ptrs[1] = &(rhs->adjoint);
 
@@ -585,15 +624,17 @@ Rev rev_make_binary( Node *lhs, Node *rhs, double val )
 
 
 // to produce a leaf node on tape
+template <typename T>
 inline
-void rev_put_on_tape( Rev *v )
+void rev_put_on_tape( Rev<T> *v )
 {
-    v->node = tp_alloc_node( &_TAPE, 0 );
+    v->node = tp_alloc_node( get_tape<T>(), 0 );
 }
 
 
+template <typename T>
 inline
-void rev_put_on_tape_n( Rev **a, size_t n_a )
+void rev_put_on_tape_n( Rev<T> **a, size_t n_a )
 {
     for ( size_t i = 0; i < n_a; ++i ) {
         rev_put_on_tape( a[i] );
@@ -602,41 +643,46 @@ void rev_put_on_tape_n( Rev **a, size_t n_a )
 
 
 // access to adjoint
+template <typename T>
 inline
-double rev_adjoint( Rev v )
+T rev_adjoint( Rev<T> v )
 {
     return v.node->adjoint;
 }
 
 
 // accessing local derivatives with bounds check
-
+template <typename T>
 inline
-double& rev_deriv( Rev v )
+T& rev_deriv( Rev<T> v )
 {
     assert( v.node->n == 1 );
     return v.node->derivs[0];
 }
 
 
+template <typename T>
 inline
-double& rev_deriv_l( Rev v )
+T& rev_deriv_l( Rev<T> v )
 {
     assert( v.node->n == 2 );
     return v.node->derivs[0];
 }
 
 
+template <typename T>
 inline
-double& rev_deriv_r( Rev v )
+T& rev_deriv_r( Rev<T> v )
 {
     assert( v.node->n == 2 );
     return v.node->derivs[1];
 }
 
 
+
+template <typename T>
 inline
-double& rev_deriv_n( Rev v, size_t n )
+T& rev_deriv_n( Rev<T> v, size_t n )
 {
     assert( n < v.node->n );
     return v.node->derivs[n];
@@ -644,33 +690,36 @@ double& rev_deriv_n( Rev v, size_t n )
 
 
 // accessing child node adjoints with bounds check
-
+template <typename T>
 inline
-double * rev_adj( Rev v )
+T * rev_adj( Rev<T> v )
 {
     assert( v.node->n == 1 );
     return v.node->adj_ptrs[0];
 }
 
 
+template <typename T>
 inline
-double * rev_adj_l( Rev v )
+T * rev_adj_l( Rev<T> v )
 {
     assert( v.node->n == 2 );
     return v.node->adj_ptrs[0];
 }
 
 
+template <typename T>
 inline
-double * rev_adj_r( Rev v )
+T * rev_adj_r( Rev<T> v )
 {
     assert( v.node->n == 2 );
     return v.node->adj_ptrs[1];
 }
 
 
+template <typename T>
 inline
-double * rev_adj_n( Rev v, size_t n )
+T * rev_adj_n( Rev<T> v, size_t n )
 {
     assert( n < v.node->n );
     return v.node->adj_ptrs[0];
@@ -680,50 +729,52 @@ double * rev_adj_n( Rev v, size_t n )
 // core function where back propagation of takes place
 // "Modern Computational Finance - AAD and Parallel Simuations", p. 389
 
+template <typename T>
 void backprop_between( Tape_Position start, Tape_Position end )
 {
+    Tape<T> *tape = get_tape<T>();
 
 #define NODE_PROPAGATION \
-    node = (Node *) (data[blockIdx] + nodeIdx); \
+    node = (Node<T> *) (data[block_idx] + node_idx); \
     nd_propagate_one( *node );
 
 #define BACKPROP_LOOP \
-    for ( int64_t nodeIdx = cap - 1; nodeIdx >= 0; nodeIdx-- ) { \
+    for ( int64_t node_idx = block_size - 1; node_idx >= 0; node_idx-- ) { \
         NODE_PROPAGATION \
     }
 
-    if ( _TAPE.nodes.arrayCap == 0 )
+    if ( tape->nodes.block_size == 0 )
         return;
 
     int64_t block    = (int64_t)end.nodes.block;
     int64_t position = (int64_t)end.nodes.element;
 
-    int64_t blockIdx = (int64_t)start.nodes.block;
-    int64_t lastPos  = (int64_t)start.nodes.element;
+    int64_t block_idx = (int64_t)start.nodes.block;
+    int64_t last_pos  = (int64_t)start.nodes.element;
 
-    int64_t cap      = (int64_t)_TAPE.nodes.arrayCap / sizeof(Node);
+    int64_t block_size = (int64_t)tape->nodes.block_size;
 
-    int64_t nodeIdx  = 0;
+    int64_t node_idx  = 0;
 
-    Node   *node = NULL;
-    Node  **data = (Node **) _TAPE.nodes.raw.data;
+    Node<T>   *node = NULL;
+    Node<T>  **data = (Node<T> **) tape->nodes.raw.data;
 
-    int64_t firstBlockPos = 0;
+    int64_t first_block_pos = 0;
 
-    if ( blockIdx == block ) {
-        firstBlockPos = position;
+    if ( block_idx == block ) {
+        first_block_pos = position;
     }
-    for ( nodeIdx = lastPos - 1; nodeIdx >= firstBlockPos; nodeIdx -- ) {
+    for ( node_idx = last_pos - 1; node_idx >= first_block_pos; node_idx -- ) {
         NODE_PROPAGATION
     }
 
-    blockIdx -= 1;
+    block_idx -= 1;
 
-    for ( ; blockIdx > block; --blockIdx ) {
+    for ( ; block_idx > block; --block_idx ) {
         BACKPROP_LOOP
     }
 
-    if (blockIdx == block) {
+    if ( block_idx == block ) {
         BACKPROP_LOOP
     }
 
@@ -732,21 +783,27 @@ void backprop_between( Tape_Position start, Tape_Position end )
 }
 
 
+
+template <typename T>
 inline
-void backprop_until( Rev v, Tape_Position tp )
+void backprop_until( Rev<T> v, Tape_Position tp )
 {
     v.node->adjoint = 1.0;
-    backprop_between( _TAPE_mark(), tp );
+    backprop_between<T>( _TAPE_mark<T>(), tp );
 }
 
+
+template <typename T>
 inline
-void backprop_to_mark( Rev v, Tape_Position tp ) {
-    backprop_until( v, tp );
+void backprop_to_mark( Rev<T> v, Tape_Position tp ) {
+    backprop_until<T>( v, tp );
 }
 
+
+template <typename T>
 inline
-void backprop( Rev v ) {
-    backprop_until( v, { 0 } );
+void backprop( Rev<T> v ) {
+    backprop_until<T>( v, { 0 } );
 }
 
 
@@ -755,12 +812,13 @@ void backprop( Rev v ) {
 // Equivalent to
 // "Modern Computational Finance - AAD and Parallel Simuations", p. 393
 
+template <typename T>
 inline
-Rev Rev::operator+( Rev rhs )
+Rev<T> Rev<T>::operator+( Rev<T> rhs )
 {
-    double resVal = val + rhs.val;
+    T resVal = val + rhs.val;
 
-    Rev res( node, rhs.node, resVal );
+    Rev<T> res( node, rhs.node, resVal );
 
     rev_deriv_l( res ) = 1.0;
     rev_deriv_r( res ) = 1.0;
@@ -768,31 +826,35 @@ Rev Rev::operator+( Rev rhs )
     return res;
 }
 
+template <typename T>
 inline
-Rev Rev::operator+( double rhs )
+Rev<T> Rev<T>::operator+( T rhs )
 {
-    double resVal = val + rhs;
+    T resVal = val + rhs;
 
-    Rev res( node, resVal );
+    Rev<T> res( node, resVal );
 
     rev_deriv( res ) = 1.0;
 
     return res;
 }
 
+
+template <typename T>
 inline
-Rev operator+( double lhs, Rev rhs )
+Rev<T> operator+( T lhs, Rev<T> rhs )
 {
     return rhs + lhs;
 }
 
 
+template <typename T>
 inline
-Rev Rev::operator-( Rev rhs )
+Rev<T> Rev<T>::operator-( Rev<T> rhs )
 {
-    double resVal = val - rhs.val;
+    T resVal = val - rhs.val;
 
-    Rev res( node, rhs.node, resVal );
+    Rev<T> res( node, rhs.node, resVal );
 
     rev_deriv_l( res ) = 1.0;
     rev_deriv_r( res ) = -1.0;
@@ -800,24 +862,26 @@ Rev Rev::operator-( Rev rhs )
     return res;
 }
 
+template <typename T>
 inline
-Rev Rev::operator-( double rhs )
+Rev<T> Rev<T>::operator-( T rhs )
 {
-    double resVal = val - rhs;
+    T resVal = val - rhs;
 
-    Rev res( node, resVal );
+    Rev<T> res( node, resVal );
 
     rev_deriv( res ) = 1.0;
 
     return res;
 }
 
+template <typename T>
 inline
-Rev operator-( double lhs, Rev rhs )
+Rev<T> operator-( T lhs, Rev<T> rhs )
 {
-    double resVal = lhs - rhs.val;
+    T resVal = lhs - rhs.val;
 
-    Rev res( rhs.node, resVal );
+    Rev<T> res( rhs.node, resVal );
 
     rev_deriv( res ) = -1.0;
 
@@ -825,12 +889,13 @@ Rev operator-( double lhs, Rev rhs )
 }
 
 
+template <typename T>
 inline
-Rev Rev::operator*( Rev rhs )
+Rev<T> Rev<T>::operator*( Rev<T> rhs )
 {
-    double resVal = val * rhs.val;
+    T resVal = val * rhs.val;
 
-    Rev res( node, rhs.node, resVal );
+    Rev<T> res( node, rhs.node, resVal );
 
     rev_deriv_l( res ) = rhs.val;
     rev_deriv_r( res ) = val;
@@ -841,12 +906,13 @@ Rev Rev::operator*( Rev rhs )
     return res;
 }
 
+template <typename T>
 inline
-Rev Rev::operator*( double rhs )
+Rev<T> Rev<T>::operator*( T rhs )
 {
-    double resVal = val * rhs;
+    T resVal = val * rhs;
 
-    Rev res( node, resVal );
+    Rev<T> res( node, resVal );
 
     rev_deriv( res ) = rhs;
 
@@ -855,21 +921,23 @@ Rev Rev::operator*( double rhs )
     return res;
 }
 
+template <typename T>
 inline
-Rev operator*( double lhs, Rev rhs )
+Rev<T> operator*( T lhs, Rev<T> rhs )
 {
     return rhs * lhs;
 }
 
 
+template <typename T>
 inline
-Rev Rev::operator/( Rev rhs )
+Rev<T> Rev<T>::operator/( Rev<T> rhs )
 {
-    double resVal = val / rhs.val;
+    T resVal = val / rhs.val;
 
-    Rev res( node, rhs.node, resVal );
+    Rev<T> res( node, rhs.node, resVal );
 
-    double irhs = 1.0 / rhs.val;
+    T irhs = 1.0 / rhs.val;
 
     rev_deriv_l( res ) = irhs;
     rev_deriv_r( res ) = -val * irhs * irhs;
@@ -880,12 +948,13 @@ Rev Rev::operator/( Rev rhs )
     return res;
 }
 
+template <typename T>
 inline
-Rev Rev::operator/( double rhs )
+Rev<T> Rev<T>::operator/( T rhs )
 {
-    double resVal = val / rhs;
+    T resVal = val / rhs;
 
-    Rev res( node, resVal );
+    Rev<T> res( node, resVal );
 
     rev_deriv( res ) = 1.0 / rhs;
 
@@ -894,12 +963,13 @@ Rev Rev::operator/( double rhs )
     return res;
 }
 
+template <typename T>
 inline
-Rev operator/( double lhs, Rev rhs )
+Rev<T> operator/( T lhs, Rev<T> rhs )
 {
-    double resVal = lhs / rhs.val;
+    T resVal = lhs / rhs.val;
 
-    Rev res( rhs.node, resVal );
+    Rev<T> res( rhs.node, resVal );
 
     rev_deriv( res ) = -lhs / (rhs.val * rhs.val);
 
@@ -909,146 +979,172 @@ Rev operator/( double lhs, Rev rhs )
 }
 
 
-Rev& Rev::operator+=( Rev rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator+=( Rev<T> rhs )
 {
     *this = *this + rhs;
     return *this;
 }
 
-Rev& Rev::operator+=( double rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator+=( T rhs )
 {
     *this = *this + rhs;
     return *this;
 }
 
-Rev& Rev::operator-=( Rev rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator-=( Rev<T> rhs )
 {
     *this = *this - rhs;
     return *this;
 }
 
-Rev& Rev::operator-=( double rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator-=( T rhs )
 {
     *this = *this - rhs;
     return *this;
 }
 
-Rev& Rev::operator*=( Rev rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator*=( Rev<T> rhs )
 {
     *this = *this * rhs;
     return *this;
 }
 
-Rev& Rev::operator*=( double rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator*=( T rhs )
 {
     *this = *this * rhs;
     return *this;
 }
 
-Rev& Rev::operator/=( Rev rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator/=( Rev<T> rhs )
 {
     *this = *this / rhs;
     return *this;
 }
 
-Rev& Rev::operator/=( double rhs )
+template <typename T>
+Rev<T>& Rev<T>::operator/=( T rhs )
 {
     *this = *this / rhs;
     return *this;
 }
 
 
-bool operator==( Rev lhs, Rev rhs )
+template <typename T>
+bool operator==( Rev<T> lhs, Rev<T> rhs )
 {
     return lhs.val == rhs.val;
 }
 
-bool operator==( Rev lhs, double rhs )
+template <typename T>
+bool operator==( Rev<T> lhs, T rhs )
 {
     return lhs.val == rhs;
 }
 
-bool operator==( double lhs, Rev rhs )
+template <typename T>
+bool operator==( T lhs, Rev<T> rhs )
 {
     return lhs == rhs.val;
 }
 
 
-bool operator!=( Rev lhs, Rev rhs )
+template <typename T>
+bool operator!=( Rev<T> lhs, Rev<T> rhs )
 {
     return lhs.val != rhs.val;
 }
 
-bool operator!=( Rev lhs, double rhs )
+template <typename T>
+bool operator!=( Rev<T> lhs, T rhs )
 {
     return lhs.val != rhs;
 }
 
-bool operator!=( double lhs, Rev rhs )
+template <typename T>
+bool operator!=( T lhs, Rev<T> rhs )
 {
     return lhs != rhs.val;
 }
 
 
-bool operator<( Rev lhs, Rev rhs )
+template <typename T>
+bool operator<( Rev<T> lhs, Rev<T> rhs )
 {
     return lhs.val < rhs.val;
 }
 
-bool operator<( Rev lhs, double rhs )
+template <typename T>
+bool operator<( Rev<T> lhs, T rhs )
 {
     return lhs.val < rhs;
 }
 
-bool operator<( double lhs, Rev rhs )
+template <typename T>
+bool operator<( T lhs, Rev<T> rhs )
 {
     return lhs < rhs.val;
 }
 
 
-bool operator>( Rev lhs, Rev rhs )
+template <typename T>
+bool operator>( Rev<T> lhs, Rev<T> rhs )
 {
     return lhs.val > rhs.val;
 }
 
-bool operator>( Rev lhs, double rhs )
+template <typename T>
+bool operator>( Rev<T> lhs, T rhs )
 {
     return lhs.val > rhs;
 }
 
-bool operator>( double lhs, Rev rhs )
+template <typename T>
+bool operator>( T lhs, Rev<T> rhs )
 {
     return lhs > rhs.val;
 }
 
 
-bool operator<=( Rev lhs, Rev rhs )
+template <typename T>
+bool operator<=( Rev<T> lhs, Rev<T> rhs )
 {
     return lhs.val <= rhs.val;
 }
 
-bool operator<=( Rev lhs, double rhs )
+template <typename T>
+bool operator<=( Rev<T> lhs, T rhs )
 {
     return lhs.val <= rhs;
 }
 
-bool operator<=( double lhs, Rev rhs )
+template <typename T>
+bool operator<=( T lhs, Rev<T> rhs )
 {
     return lhs <= rhs.val;
 }
 
 
-bool operator>=( Rev lhs, Rev rhs )
+template <typename T>
+bool operator>=( Rev<T> lhs, Rev<T> rhs )
 {
     return lhs.val >= rhs.val;
 }
 
-bool operator>=( Rev lhs, double rhs )
+template <typename T>
+bool operator>=( Rev<T> lhs, T rhs )
 {
     return lhs.val >= rhs;
 }
 
-bool operator>=( double lhs, Rev rhs )
+template <typename T>
+bool operator>=( T lhs, Rev<T> rhs )
 {
     return lhs >= rhs.val;
 }

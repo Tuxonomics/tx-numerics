@@ -1,6 +1,6 @@
-// rev_test.cpp
+// rev_t_test.cpp
 
-#include "rev.hpp"
+#include "rev_t.hpp"
 #include "../finite_differences/finite_differences.hpp"
 
 
@@ -27,13 +27,13 @@ void test_memory_blocks( void )
 {
 #define T char
 
-    size_t nBlocks = 1024;
+    size_t n_blocks = 1024;
 
-    Memory_Blocks mb = mb_make( sizeof(T), nBlocks );
+    Memory_Blocks<T> mb = mb_make<T>( n_blocks );
 
-    T *ar1 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
-    T *ar2 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
-    T *ar3 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
+    T *ar1 = mb_alloc( &mb, n_blocks/2 );
+    T *ar2 = mb_alloc( &mb, n_blocks/2 );
+    T *ar3 = mb_alloc( &mb, n_blocks/2 );
 
     (void) ar2;
     (void) ar3;
@@ -42,15 +42,15 @@ void test_memory_blocks( void )
 
     Block_Position bp = mb_mark( &mb );
 
-    T *ar4 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
-    T *ar5 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
+    T *ar4 = mb_alloc( &mb, n_blocks/2 );
+    T *ar5 = mb_alloc( &mb, n_blocks/2 );
 
     ASSERT( mb.raw.len == 3 );
 
     mb_rewind( &mb, bp );
 
-    T *ar6 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
-    T *ar7 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
+    T *ar6 = mb_alloc( &mb, n_blocks/2 );
+    T *ar7 = mb_alloc( &mb, n_blocks/2 );
 
     ASSERT( mb.raw.len == 3 );
     ASSERT( ar4 == ar6 );
@@ -63,7 +63,7 @@ void test_memory_blocks( void )
 
 //    mb_print(mb, NULL);
 
-    T *ar8 = (T*) mb_alloc( &mb, nBlocks/2, sizeof(T) );
+    T *ar8 = mb_alloc( &mb, n_blocks/2 );
 
     ASSERT( ar8 == ar1 );
     ASSERT( mb.raw.len == 3 );
@@ -74,29 +74,33 @@ void test_memory_blocks( void )
 //    mb_print(mb, NULL);
 
 
-#undef TYPE
+#undef T
 }
 
 
 void test_node( void )
 {
-    Node node = nd_make( 0 );
+#define T char
+    Node<T> node = nd_make<T>( 0 );
 
     ASSERT( node.adjoint == 0 );
 
     nd_propagate_one( node );
+#undef T
 }
 
 
 void test_tape( void )
 {
+#define T double
+
     size_t nNodes = 2;
 
-    Tape t = tp_make( nNodes, 2*nNodes );
+    Tape<T> t = tp_make<T>( nNodes, 2*nNodes );
 
-    Node *n0 = (Node*) tp_alloc_node( &t, 0 );
-    Node *n1 = (Node*) tp_alloc_node( &t, 0 );
-    Node *n2 = (Node*) tp_alloc_node( &t, 0 );
+    Node<T> *n0 = tp_alloc_node( &t, 0 );
+    Node<T> *n1 = tp_alloc_node( &t, 0 );
+    Node<T> *n2 = tp_alloc_node( &t, 0 );
 
 
     ASSERT( n0->adjoint == 0 );
@@ -118,287 +122,276 @@ void test_tape( void )
 
     tp_clear( &t );
 
-    Node *n3 = (Node*) tp_alloc_node( &t, 0 );
+    Node<T> *n3 = tp_alloc_node( &t, 0 );
 
     ASSERT( n3 == n0 );
 
 
     tp_free( &t );
+
+#undef T
 }
 
 
+template <typename T>
 void test_rev_alloc( void )
 {
-    _TAPE_init();
+    _TAPE_init<T>();
 
-    Rev x = 1;
-    // rev_print(x);
+    Rev<T> x = 1;
 
-    _TAPE_deinit();
+    _TAPE_deinit<T>();
 }
 
 
+
+template <typename T>
 void test_basic_ops( void )
 {
-    _TAPE_init();
+    _TAPE_init<T>();
 
-    Rev x(1.0);
+    Rev<T> x(T(1.0));
 
-    ASSERT( x.val == 1.0 && rev_adjoint(x) == 0.0 );
+    ASSERT( x.val == T(1.0) && rev_adjoint(x) == T(0.0) );
     ASSERT( x.node->n == 0 );
 
-    _TAPE_clear();
+    _TAPE_clear<T>();
 
-    x = 2.0;
+    x = T(2.0);
 
-    Rev z = 2.0 * x;
-
-    backprop( z );
-
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 2.0, EPS) );
-
-    _TAPE_reset_adjoints();
-
-    ASSERT( rev_adjoint(z) == 0.0 );
-    ASSERT( rev_adjoint(x) == 0.0 );
+    Rev<T> z = T(2.0) * x;
 
     backprop( z );
 
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 2.0, EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
 
-    _TAPE_deinit();
+    _TAPE_reset_adjoints<T>();
+
+    ASSERT( rev_adjoint(z) == T(0.0) );
+    ASSERT( rev_adjoint(x) == T(0.0) );
+
+    backprop( z );
+
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
+
+    _TAPE_deinit<T>();
 }
 
 
+template <typename T>
 void test_add( void )
 {
-    _TAPE_init();
+    _TAPE_init<T>();
 
-    Rev x(2.0);
+    Rev<T> x(T(2.0));
 
-    Rev z = 2.0 + x;
-
-    backprop( z );
-
-    ASSERT( approx(z.val, 4.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 1.0, EPS) );
-
-    _TAPE_reset_adjoints();
-
-
-    z = x + 2.0;
+    Rev<T> z = T(2.0) + x;
 
     backprop( z );
 
-    ASSERT( approx(z.val, 4.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 1.0, EPS) );
+    ASSERT( approx(z.val, T(4.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
 
-    _TAPE_reset_adjoints();
+    _TAPE_reset_adjoints<T>();
 
 
-    Rev y(3.0);
+    z = x + T(2.0);
+
+    backprop( z );
+
+    ASSERT( approx(z.val, T(4.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
+
+    _TAPE_reset_adjoints<T>();
+
+
+    Rev<T> y(T(3.0));
 
     z = y + x;
 
     backprop( z );
 
-    ASSERT( approx(z.val, 5.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(y), 1.0, EPS) );
+    ASSERT( approx(z.val, T(5.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(y), T(1.0), EPS) );
 
-    _TAPE_deinit();
+    _TAPE_deinit<T>();
 }
 
 
+template <typename T>
 void test_subtract( void )
 {
-    _TAPE_init();
+    _TAPE_init<T>();
 
-    Rev x(2.0);
+    Rev<T> x(T(2.0));
 
-    Rev z = 3.0 - x;
-
-    backprop( z );
-
-    ASSERT( approx(z.val, 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), -1.0, EPS) );
-
-    _TAPE_reset_adjoints();
-
-
-    z = x - 3.0;
+    Rev<T> z = T(3.0) - x;
 
     backprop( z );
 
-    ASSERT( approx(z.val, -1.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 1.0, EPS) );
+    ASSERT( approx(z.val, T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
 
-    _TAPE_reset_adjoints();
+    _TAPE_reset_adjoints<T>();
 
 
-    Rev y(3.0);
+    z = x - T(3.0);
+
+    backprop( z );
+
+    ASSERT( approx(z.val, T(-1.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
+
+    _TAPE_reset_adjoints<T>();
+
+
+    Rev<T> y(T(3.0));
 
     z = y - x;
 
     backprop( z );
 
-    ASSERT( approx(z.val, 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), -1.0, EPS) );
-    ASSERT( approx(rev_adjoint(y), 1.0, EPS) );
+    ASSERT( approx(z.val, T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
+    ASSERT( approx(rev_adjoint(y), T(1.0), EPS) );
 
-    _TAPE_deinit();
+    _TAPE_deinit<T>();
 }
 
 
+template <typename T>
 void test_multiply( void )
 {
-    _TAPE_init();
+    _TAPE_init<T>();
 
-    Rev x(2.0);
+    Rev<T> x(T(2.0));
 
-    Rev z = 2.0 * x;
-
-    backprop( z );
-
-    ASSERT( approx( z.val, 4.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 2.0, EPS) );
-
-    _TAPE_reset_adjoints();
-
-
-    z = x * 2.0;
+    Rev<T> z = T(2.0) * x;
 
     backprop( z );
 
-    ASSERT( approx( z.val, 4.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 2.0, EPS) );
+    ASSERT( approx( z.val, T(4.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
 
-    _TAPE_reset_adjoints();
+    _TAPE_reset_adjoints<T>();
 
 
-    Rev y(3.0);
+    z = x * T(2.0);
+
+    backprop( z );
+
+    ASSERT( approx( z.val, T(4.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
+
+    _TAPE_reset_adjoints<T>();
+
+
+    Rev<T> y(T(3.0));
 
     z = y * x;
 
     backprop( z );
 
-    ASSERT( approx( z.val, 6.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 3.0, EPS) );
-    ASSERT( approx(rev_adjoint(y), 2.0, EPS) );
+    ASSERT( approx( z.val, T(6.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(3.0), EPS) );
+    ASSERT( approx(rev_adjoint(y), T(2.0), EPS) );
 
-    _TAPE_deinit();
+    _TAPE_deinit<T>();
 }
 
 
+template <typename T>
 void test_divide( void )
 {
-    _TAPE_init();
+    _TAPE_init<T>();
 
-    Rev x(2.0);
+    Rev<T> x(T(2.0));
 
-    Rev z = 4.0 / x;
-
-    backprop( z );
-
-    ASSERT( approx( z.val, 2.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), -1.0, EPS) );
-
-    _TAPE_reset_adjoints();
-
-
-    z = x / 4.0;
+    Rev<T> z = T(4.0) / x;
 
     backprop( z );
 
-    ASSERT( approx( z.val, 0.5, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), 0.25, EPS) );
+    ASSERT( approx( z.val, T(2.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
 
-    _TAPE_reset_adjoints();
+    _TAPE_reset_adjoints<T>();
 
 
-    Rev y(4.0);
+    z = x / T(4.0);
+
+    backprop( z );
+
+    ASSERT( approx( z.val, T(0.5), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(0.25), EPS) );
+
+    _TAPE_reset_adjoints<T>();
+
+
+    Rev<T> y(T(4.0));
 
     z = y / x;
 
     backprop( z );
 
-    ASSERT( approx( z.val, 2.0, EPS) );
-    ASSERT( approx(rev_adjoint(z), 1.0, EPS) );
-    ASSERT( approx(rev_adjoint(x), -1.0, EPS) );
-    ASSERT( approx(rev_adjoint(y), 0.5, EPS) );
+    ASSERT( approx( z.val, T(2.0), EPS) );
+    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
+    ASSERT( approx(rev_adjoint(y), T(0.5), EPS) );
 
-    _TAPE_deinit();
+    _TAPE_deinit<T>();
 }
 
 
+template <typename T>
 void test_tape_operations( void )
 {
+    _TAPE_init<T>();
 
-    _TAPE_init();
+    T xval = T(3.0);
+    T yval = T(2.0);
 
-    double xval = 3.0;
-    double yval = 2.0;
+    Tape_Position tp0 = _TAPE_mark<T>();
 
-    Tape_Position tp0 = _TAPE_mark();
+    Rev<T> x(xval);
+    Rev<T> y(yval);
 
-    Rev x(xval);
-    rev_print(x, "x");
-    Rev y(yval);
-    rev_print(y, "y");
+    Rev<T> z = x*y;
 
-    Rev z = x*y;
-    rev_print(z, "z");
-    
-    double **adj_ptr_y = &z.node->adj_ptrs[1];
-    printf("adj_ptr_y = %p\n", (void*) *adj_ptr_y);
+    T **adj_ptr_y = &z.node->adj_ptrs[1];
 
-    Tape_Position tp1 = _TAPE_mark();
+    Tape_Position tp1 = _TAPE_mark<T>();
 
     int n = 4;
 
     for ( int i = 0; i < n; ++i ) {
-        Rev v = 2.0*z; // error
-        
-        printf("\n\n-------------------\n[%i]\n", i);
-        rev_print(v, "v");
-        
-        Rev w = 2.0*v;
-        rev_print(w, "w");
+        Rev<T> v = T(2.0)*z; // error
+        Rev<T> w = T(2.0)*v;
 
-        backprop_to_mark( w, tp1 );
+        backprop_to_mark<T>( w, tp1 );
 
-        printf("----\n");
-        rev_print(v, "v");
-        rev_print(w, "w");
-        rev_print(z, "z");
-
-        _TAPE_rewind( tp1 );
+        _TAPE_rewind<T>( tp1 );
     }
 
-    backprop_between( tp1, tp0 );
-    
-    printf("\n\n-------------------\n");
-    rev_print(x, "x");
-    rev_print(y, "y");
-    rev_print(z, "z");
+    backprop_between<T>( tp1, tp0 );
 
-    ASSERT( approx( rev_adjoint(x), 4.0*n*yval, EPS ) );
-    ASSERT( approx( rev_adjoint(y), 4.0*n*xval, EPS ) );
+    ASSERT( approx( rev_adjoint(x), T(4.0)*n*yval, EPS ) );
+    ASSERT( approx( rev_adjoint(y), T(4.0)*n*xval, EPS ) );
 
-    _TAPE_deinit();
+    _TAPE_deinit<T>();
 }
 
 
@@ -406,11 +399,22 @@ test tests[N_TESTS] = {
     ADD_TEST(test_memory_blocks),
     ADD_TEST(test_node),
     ADD_TEST(test_tape),
-    ADD_TEST(test_rev_alloc),
-    ADD_TEST(test_basic_ops),
-    ADD_TEST(test_add),
-    ADD_TEST(test_subtract),
-    ADD_TEST(test_multiply),
-    ADD_TEST(test_divide),
-    ADD_TEST(test_tape_operations),
+
+    ADD_TEST(test_rev_alloc<double>),
+    ADD_TEST(test_rev_alloc<float>),
+
+    ADD_TEST(test_basic_ops<double>),
+    ADD_TEST(test_basic_ops<float>),
+
+    ADD_TEST(test_add<double>),
+    ADD_TEST(test_add<float>),
+    ADD_TEST(test_subtract<double>),
+    ADD_TEST(test_subtract<float>),
+    ADD_TEST(test_multiply<double>),
+    ADD_TEST(test_multiply<float>),
+    ADD_TEST(test_divide<double>),
+    ADD_TEST(test_divide<float>),
+
+    ADD_TEST(test_tape_operations<double>),
+    ADD_TEST(test_tape_operations<float>),
 };
