@@ -2,9 +2,12 @@
 
 #include "rev.hpp"
 #include "../finite_differences/finite_differences.hpp"
+#include "../../tx_tests.hpp"
 
 
 using namespace std;
+
+#define ASSERT TX_ASSERT
 
 
 bool approx( double a, double b, double eps )
@@ -395,26 +398,29 @@ void test_tape_operations( void )
 }
 
 
-test tests[N_TESTS] = {
-    ADD_TEST(test_memory_blocks),
-    ADD_TEST(test_node),
-    ADD_TEST(test_tape),
+TX_TEST_LIST = {
+    TX_ADD_TEST(test_memory_blocks),
+    TX_ADD_TEST(test_node),
+    TX_ADD_TEST(test_tape),
 
-    ADD_TEST(test_rev_alloc<double>),
-    ADD_TEST(test_rev_alloc<float>),
+    TX_ADD_TEST(test_rev_alloc<double>),
+    TX_ADD_TEST(test_rev_alloc<float>),
 
-    ADD_TEST(test_basic_ops<double>),
-    ADD_TEST(test_basic_ops<float>),
+    TX_ADD_TEST(test_basic_ops<double>),
+    TX_ADD_TEST(test_basic_ops<float>),
 
-    ADD_TEST(test_add<double>),
-    ADD_TEST(test_add<float>),
-    ADD_TEST(test_subtract<double>),
-    ADD_TEST(test_subtract<float>),
-    ADD_TEST(test_multiply<double>),
-    ADD_TEST(test_multiply<float>),
-    ADD_TEST(test_divide<double>),
-    ADD_TEST(test_divide<float>),
+    TX_ADD_TEST(test_add<double>),
+    TX_ADD_TEST(test_add<float>),
+    TX_ADD_TEST(test_subtract<double>),
+    TX_ADD_TEST(test_subtract<float>),
+    TX_ADD_TEST(test_multiply<double>),
+    TX_ADD_TEST(test_multiply<float>),
+    TX_ADD_TEST(test_divide<double>),
+    TX_ADD_TEST(test_divide<float>),
 
-    ADD_TEST(test_tape_operations<double>),
-    ADD_TEST(test_tape_operations<float>),
+    TX_ADD_TEST(test_tape_operations<double>),
+    TX_ADD_TEST(test_tape_operations<float>),
 };
+
+
+TX_TESTS_MAIN

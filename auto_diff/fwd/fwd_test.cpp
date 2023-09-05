@@ -2,9 +2,12 @@
 
 #include "fwd.hpp"
 #include "../finite_differences/finite_differences.hpp"
+#include "../../tx_tests.hpp"
 
 
 using namespace std;
+
+#define ASSERT TX_ASSERT
 
 
 bool approx( double a, double b, double eps )
@@ -333,28 +336,30 @@ void test_hess_1( void )
 }
 
 
-test tests[N_TESTS] = {
-    ADD_TEST(test_fwd),
-    ADD_TEST(test_fwd_add),
-    ADD_TEST(test_fwd_sub),
-    ADD_TEST(test_fwd_mul),
-    ADD_TEST(test_fwd_div),
-    ADD_TEST(test_incr_decr),
-    ADD_TEST(test_abs),
-    ADD_TEST(test_sqrt),
-    ADD_TEST(test_pow),
-    ADD_TEST(test_sin),
-    ADD_TEST(test_cos),
-    ADD_TEST(test_tan),
-    ADD_TEST(test_atan),
-    ADD_TEST(test_exp),
-    ADD_TEST(test_log),
-    ADD_TEST(test_logabs),
-    ADD_TEST(test_sinh),
-    ADD_TEST(test_cosh),
-    ADD_TEST(test_tanh),
-    ADD_TEST(test_atanh),
-    ADD_TEST(test_grad_1),
-    ADD_TEST(test_hess_1),
+TX_TEST_LIST = {
+    TX_ADD_TEST(test_fwd),
+    TX_ADD_TEST(test_fwd_add),
+    TX_ADD_TEST(test_fwd_sub),
+    TX_ADD_TEST(test_fwd_mul),
+    TX_ADD_TEST(test_fwd_div),
+    TX_ADD_TEST(test_incr_decr),
+    TX_ADD_TEST(test_abs),
+    TX_ADD_TEST(test_sqrt),
+    TX_ADD_TEST(test_pow),
+    TX_ADD_TEST(test_sin),
+    TX_ADD_TEST(test_cos),
+    TX_ADD_TEST(test_tan),
+    TX_ADD_TEST(test_atan),
+    TX_ADD_TEST(test_exp),
+    TX_ADD_TEST(test_log),
+    TX_ADD_TEST(test_logabs),
+    TX_ADD_TEST(test_sinh),
+    TX_ADD_TEST(test_cosh),
+    TX_ADD_TEST(test_tanh),
+    TX_ADD_TEST(test_atanh),
+    TX_ADD_TEST(test_grad_1),
+    TX_ADD_TEST(test_hess_1),
 };
 
+
+TX_TESTS_MAIN
