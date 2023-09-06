@@ -3,33 +3,29 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <exception>
-#include <assert.h>
+#include <setjmp.h>
+#include <stdarg.h>
 
 
-class tx_test_exception : public std::exception {
-public:
-    char *message;
-    char *location;
-
-    tx_test_exception( void ) : message(NULL), location(NULL) {}
-    tx_test_exception( char * msg ) : message(msg), location(NULL) {}
-    tx_test_exception( char * msg, char *loc ) : message(msg), location(loc) {}
-
-    char *what ( void ) {
-        return message;
-    }
-};
+jmp_buf tx_text_buf;
+#define TX_ERROR_BUFFER_SIZE 1024
+char tx_error_buffer[TX_ERROR_BUFFER_SIZE];
 
 
 void tx_assert_msg(
-    int cond, char *msg, const char *cond_str, const char *func, const char *file, const char *line
+    int cond, const char *cond_str, const char *func, const char *file, const char *line, const char *msg, ...
 ) {
     if ( !cond ) {
-        char *buff = (char *) malloc(1024);
-        snprintf(buff, 1024, "(%s), function %s, file %s, line %s", cond_str, func, file, line);
-        throw tx_test_exception( msg, buff );
+        if ( msg ) {
+            va_list args;
+            va_start(args, msg);
+            vprintf(msg, args);
+            va_end(args);
+        }
+        snprintf(tx_error_buffer, TX_ERROR_BUFFER_SIZE, "(%s), function %s, file %s, line %s", cond_str, func, file, line);
+        longjmp(tx_text_buf, 1);
     }
+
 }
 
 
@@ -37,7 +33,8 @@ void tx_assert_msg(
 #define TX_AS_STRING(x) TX_AS_STRING2(x)
 #define TX_LINE TX_AS_STRING(__LINE__)
 
-#define TX_ASSERT_MSG(cond, msg) tx_assert_msg(cond, msg, #cond, __func__, __FILE__, TX_LINE)
+#define TX_ASSERT_MSG_VA(cond, msg, ...) tx_assert_msg(cond, #cond, __func__, __FILE__, TX_LINE, msg, __VA_ARGS__)
+#define TX_ASSERT_MSG(cond, msg) TX_ASSERT_MSG_VA(cond, msg, NULL)
 #define TX_ASSERT(cond) TX_ASSERT_MSG(cond, NULL)
 
 #define TX_TEST_FUN(name) void (*name) (void)
@@ -63,24 +60,19 @@ struct tx_test {
 \
         for ( int i=0; i<TX_N_TESTS; i++ ) {\
             if ( tx_tests[i].f ) {\
-                size_t name_size = strlen(tx_tests[i].name);\
+                int failed = setjmp( tx_text_buf ); \
                 char *test_result = NULL;\
-\
-                try {\
+                size_t name_size = strlen(tx_tests[i].name);\
+     \
+                if ( !failed ) {\
                     tx_tests[i].f();\
                     test_result = (char *) TX_GREEN("OK");\
                 }\
-                catch (tx_test_exception &e) {\
+                else {\
+                    printf("Test failed %s\n", tx_error_buffer);\
                     test_result = (char *) TX_RED("FAILED");\
-                    printf("Test failed %s\n", e.location);\
-                    success = 1;\
                 }\
-                catch (...) {\
-                    test_result = (char *) TX_RED("FAILED");\
-                    printf("Test function could not be successfully executed!\n");\
-                    success = 1;\
-                }\
-\
+    \
                 printf("%s ", tx_tests[i].name);\
                 printf("\033[90m");\
                 for (size_t i = 0; i < TX_TEST_OUTPUT_LEN - name_size; i++ ) {\

@@ -2,7 +2,7 @@
 
 #include "rev.hpp"
 #include "../finite_differences/finite_differences.hpp"
-#include "../../tx_tests.hpp"
+#include "../../tx_tests.h"
 
 
 using namespace std;
