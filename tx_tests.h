@@ -71,6 +71,7 @@ struct tx_test {
                 else {\
                     printf("Test failed %s\n", tx_error_buffer);\
                     test_result = (char *) TX_RED("FAILED");\
+                    success += 1;\
                 }\
     \
                 printf("%s ", tx_tests[i].name);\
