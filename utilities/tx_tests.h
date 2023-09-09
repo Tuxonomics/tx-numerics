@@ -6,7 +6,6 @@
 #include <setjmp.h>
 #include <stdarg.h>
 
-
 jmp_buf tx_text_buf;
 #define TX_ERROR_BUFFER_SIZE 1024
 char tx_error_buffer[TX_ERROR_BUFFER_SIZE];
@@ -22,7 +21,7 @@ void tx_assert_msg(
             vprintf(msg, args);
             va_end(args);
         }
-        snprintf(tx_error_buffer, TX_ERROR_BUFFER_SIZE, "(%s), function %s, file %s, line %s", cond_str, func, file, line);
+        snprintf(tx_error_buffer, TX_ERROR_BUFFER_SIZE, "(%s) in %s, file %s, line %s", cond_str, func, file, line);
         longjmp(tx_text_buf, 1);
     }
 
@@ -81,8 +80,10 @@ struct tx_test {
                 }\
                 printf("\033[0m");\
                 printf(" %s\n", test_result);\
+                fflush(stdout);\
             }\
         }\
 \
         return success;\
     }\
+

@@ -66,6 +66,8 @@ void mb_print( Memory_Blocks<T> mb, const char *name )
 }
 
 
+// TODO: zero out rest of current block when new block is allocated
+
 template <typename T>
 T *mb_alloc(
     Memory_Blocks<T> *mblocks,

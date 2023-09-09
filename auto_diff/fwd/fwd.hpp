@@ -21,11 +21,11 @@ struct Fwd {
 
     Fwd( void ) {};
 
-    Fwd( double val ) : val( val ) { dot = T(0.0); };
+    Fwd( T val ) : val( val ) { dot = T(0.0); };
 
-    Fwd( Fwd<double> x ) : val( x.val ), dot( x.dot ) {};
+    Fwd( Fwd<T> const &x ) : val( x.val ), dot( x.dot ) {};
 
-    Fwd( Fwd<Fwd<double>> x ) : val( x.val ), dot( x.dot ) {};
+    Fwd( Fwd<Fwd<T>> const &x ) : val( x.val ), dot( x.dot ) {};
 
     Fwd( T val, T dot ) : val( val ), dot( dot ) {};
 
@@ -36,7 +36,7 @@ struct Fwd {
 
     // unary operator overloads
 
-    Fwd& operator=( double new_val );
+    Fwd& operator=( T new_val );
     Fwd  operator-();
 
     Fwd  operator+() const
@@ -48,32 +48,32 @@ struct Fwd {
     // binary operator overloads
 
     Fwd operator+( Fwd rhs );
-    Fwd operator+( double rhs );
+    Fwd operator+( T rhs );
 
 
     Fwd operator-( Fwd rhs );
-    Fwd operator-( double rhs );
+    Fwd operator-( T rhs );
 
 
     Fwd operator*( Fwd rhs );
-    Fwd operator*( double rhs );
+    Fwd operator*( T rhs );
 
 
     Fwd operator/( Fwd rhs );
-    Fwd operator/( double rhs );
+    Fwd operator/( T rhs );
 
 
     Fwd& operator+=( Fwd rhs );
-    Fwd& operator+=( double rhs );
+    Fwd& operator+=( T rhs );
 
     Fwd& operator-=( Fwd rhs );
-    Fwd& operator-=( double rhs );
+    Fwd& operator-=( T rhs );
 
     Fwd& operator*=( Fwd rhs );
-    Fwd& operator*=( double rhs );
+    Fwd& operator*=( T rhs );
 
     Fwd& operator/=( Fwd rhs );
-    Fwd& operator/=( double rhs );
+    Fwd& operator/=( T rhs );
 };
 
 
@@ -82,7 +82,7 @@ struct Fwd {
 // ------------------------ //
 
 template <typename T>
-Fwd<T>& Fwd<T>::operator=( double new_val )
+Fwd<T>& Fwd<T>::operator=( T new_val )
 {
     val = T(new_val);
     dot = T(0.0);
@@ -107,13 +107,13 @@ Fwd<T> Fwd<T>::operator+( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T> Fwd<T>::operator+( double rhs )
+Fwd<T> Fwd<T>::operator+( T rhs )
 {
     return Fwd<T>( val + rhs, dot );
 }
 
 template <typename T>
-Fwd<T> operator+( double lhs, Fwd<T> rhs )
+Fwd<T> operator+( T lhs, Fwd<T> rhs )
 {
     return rhs + lhs;
 }
@@ -126,13 +126,13 @@ Fwd<T> Fwd<T>::operator-( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T> Fwd<T>::operator-( double rhs )
+Fwd<T> Fwd<T>::operator-( T rhs )
 {
     return Fwd<T>( val - rhs, dot );
 }
 
 template <typename T>
-Fwd<T> operator-( double lhs, Fwd<T> rhs )
+Fwd<T> operator-( T lhs, Fwd<T> rhs )
 {
     return Fwd<T>( lhs - rhs.val, -rhs.dot );
 }
@@ -145,13 +145,13 @@ Fwd<T> Fwd<T>::operator*( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T> Fwd<T>::operator*( double rhs )
+Fwd<T> Fwd<T>::operator*( T rhs )
 {
     return Fwd<T>( val * rhs, dot * rhs );
 }
 
 template <typename T>
-Fwd<T> operator*( double lhs, Fwd<T> rhs )
+Fwd<T> operator*( T lhs, Fwd<T> rhs )
 {
     return rhs * lhs;
 }
@@ -164,13 +164,13 @@ Fwd<T> Fwd<T>::operator/( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T> Fwd<T>::operator/( double rhs )
+Fwd<T> Fwd<T>::operator/( T rhs )
 {
     return Fwd<T>( val / rhs, dot / rhs );
 }
 
 template <typename T>
-Fwd<T> operator/( double lhs, Fwd<T> rhs )
+Fwd<T> operator/( T lhs, Fwd<T> rhs )
 {
     return Fwd<T>( lhs / rhs.val, - (lhs*rhs.dot) / (rhs.val*rhs.val) );
 }
@@ -184,7 +184,7 @@ Fwd<T>& Fwd<T>::operator+=( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T>& Fwd<T>::operator+=( double rhs )
+Fwd<T>& Fwd<T>::operator+=( T rhs )
 {
     *this = *this + rhs;
     return *this;
@@ -198,7 +198,7 @@ Fwd<T>& Fwd<T>::operator-=( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T>& Fwd<T>::operator-=( double rhs )
+Fwd<T>& Fwd<T>::operator-=( T rhs )
 {
     *this = *this - rhs;
     return *this;
@@ -212,7 +212,7 @@ Fwd<T>& Fwd<T>::operator*=( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T>& Fwd<T>::operator*=( double rhs )
+Fwd<T>& Fwd<T>::operator*=( T rhs )
 {
     *this = *this * rhs;
     return *this;
@@ -226,7 +226,7 @@ Fwd<T>& Fwd<T>::operator/=( Fwd<T> rhs )
 }
 
 template <typename T>
-Fwd<T>& Fwd<T>::operator/=( double rhs )
+Fwd<T>& Fwd<T>::operator/=( T rhs )
 {
     *this = *this / rhs;
     return *this;
@@ -245,13 +245,13 @@ bool operator==( Fwd<T> lhs, Fwd<T> rhs )
 }
 
 template <typename T>
-bool operator==( Fwd<T> lhs, double rhs )
+bool operator==( Fwd<T> lhs, T rhs )
 {
     return lhs.val == rhs;
 }
 
 template <typename T>
-bool operator==( double lhs, Fwd<T> rhs )
+bool operator==( T lhs, Fwd<T> rhs )
 {
     return lhs == rhs.val;
 }
@@ -264,13 +264,13 @@ bool operator!=( Fwd<T> lhs, Fwd<T> rhs )
 }
 
 template <typename T>
-bool operator!=( Fwd<T> lhs, double rhs )
+bool operator!=( Fwd<T> lhs, T rhs )
 {
     return lhs.val != rhs;
 }
 
 template <typename T>
-bool operator!=( double lhs, Fwd<T> rhs )
+bool operator!=( T lhs, Fwd<T> rhs )
 {
     return lhs != rhs.val;
 }
@@ -283,13 +283,13 @@ bool operator<( Fwd<T> lhs, Fwd<T> rhs )
 }
 
 template <typename T>
-bool operator<( Fwd<T> lhs, double rhs )
+bool operator<( Fwd<T> lhs, T rhs )
 {
     return lhs.val < rhs;
 }
 
 template <typename T>
-bool operator<( double lhs, Fwd<T> rhs )
+bool operator<( T lhs, Fwd<T> rhs )
 {
     return lhs < rhs.val;
 }
@@ -302,13 +302,13 @@ bool operator>( Fwd<T> lhs, Fwd<T> rhs )
 }
 
 template <typename T>
-bool operator>( Fwd<T> lhs, double rhs )
+bool operator>( Fwd<T> lhs, T rhs )
 {
     return lhs.val > rhs;
 }
 
 template <typename T>
-bool operator>( double lhs, Fwd<T> rhs )
+bool operator>( T lhs, Fwd<T> rhs )
 {
     return lhs > rhs.val;
 }
@@ -321,13 +321,13 @@ bool operator<=( Fwd<T> lhs, Fwd<T> rhs )
 }
 
 template <typename T>
-bool operator<=( Fwd<T> lhs, double rhs )
+bool operator<=( Fwd<T> lhs, T rhs )
 {
     return lhs.val <= rhs;
 }
 
 template <typename T>
-bool operator<=( double lhs, Fwd<T> rhs )
+bool operator<=( T lhs, Fwd<T> rhs )
 {
     return lhs <= rhs.val;
 }
@@ -340,13 +340,13 @@ bool operator>=( Fwd<T> lhs, Fwd<T> rhs )
 }
 
 template <typename T>
-bool operator>=( Fwd<T> lhs, double rhs )
+bool operator>=( Fwd<T> lhs, T rhs )
 {
     return lhs.val >= rhs;
 }
 
 template <typename T>
-bool operator>=( double lhs, Fwd<T> rhs )
+bool operator>=( T lhs, Fwd<T> rhs )
 {
     return lhs >= rhs.val;
 }
@@ -385,9 +385,9 @@ Fwd<T> sqrt( Fwd<T> x )
 }
 
 template <typename T>
-Fwd<T> pow( Fwd<T> x, double a )
+Fwd<T> pow( Fwd<T> x, T a )
 {
-    T tmp = std::pow( x.val, a - 1.0 );
+    T tmp = std::pow( x.val, a - T(1.0) );
     return Fwd<T>( x.val * tmp, T(a) * tmp * x.dot );
 }
 
@@ -467,17 +467,16 @@ Fwd<T> atanh( Fwd<T> x )
 
 
 // Gradient from function / functor fulfilling prototype
-// f: Fwd<double> f( Fwd<double> x[], size_t n )
+// f: Fwd<T> f( Fwd<T> x[], size_t n )
 
-
-template <typename F>
-void fwd_gradient_no_alloc( double *f_val, double g[], double x[], Fwd<double> x_cpy[], size_t n, F f )
+template <typename T, typename F>
+void fwd_gradient_no_alloc( T *f_val, T g[], T x[], Fwd<T> x_cpy[], size_t n, F f )
 {
-    Fwd<double> tmp = { 0 };
+    Fwd<T> tmp = { 0 };
     int f_val_not_set = 1;
 
     for ( size_t i=0; i<n; ++i ) {
-        x_cpy[i] = Fwd<double> (x[i]);
+        x_cpy[i] = Fwd<T> (x[i]);
     }
 
     for ( size_t i=0; i<n; ++i ) {
@@ -496,17 +495,30 @@ void fwd_gradient_no_alloc( double *f_val, double g[], double x[], Fwd<double> x
     }
 }
 
+template <typename T, typename F>
+void fwd_gradient_no_alloc( double *f_val, double g[], double x[], Fwd<double> x_cpy[], size_t n, F f )
+{
+    fwd_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
+}
 
-template <typename F>
-void fwd_gradient( double *f_val, double g[], double x[], size_t n, F f )
+template <typename T, typename F>
+void fwd_gradient_no_alloc( float *f_val, float g[], float x[], Fwd<float> x_cpy[], size_t n, F f )
+{
+    fwd_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
+}
+
+
+
+template <typename T, typename F>
+void fwd_gradient( T *f_val, T g[], T x[], size_t n, F f )
 {
 #define FWD_GRAD_STACK_SIZE 50
 
-    Fwd<double> buff[FWD_GRAD_STACK_SIZE];
-    Fwd<double> *x_cpy = buff;
+    Fwd<T> buff[FWD_GRAD_STACK_SIZE];
+    Fwd<T> *x_cpy = buff;
 
-    if ( n >= FWD_GRAD_STACK_SIZE ) {
-        x_cpy = (Fwd<double>*) malloc(n * sizeof(*x_cpy));
+    if ( n > FWD_GRAD_STACK_SIZE ) {
+        x_cpy = (Fwd<T>*) malloc(n * sizeof(*x_cpy));
     }
 
     fwd_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
@@ -518,20 +530,32 @@ void fwd_gradient( double *f_val, double g[], double x[], size_t n, F f )
 #undef FWD_GRAD_STACK_SIZE
 }
 
+template <typename T, typename F>
+void fwd_gradient( double *f_val, double g[], double x[], size_t n, F f )
+{
+    fwd_gradient( f_val, g, x, n, f );
+}
+
+template <typename T, typename F>
+void fwd_gradient( float *f_val, float g[], float x[], size_t n, F f )
+{
+    fwd_gradient( f_val, g, x, n, f );
+}
+
 
 
 // Hessian from function / functor fulfilling prototype
-// f: Fwd<Fwd<double>> f( Fwd<Fwd<double>> x[], size_t n )
+// f: Fwd<Fwd<T>> f( Fwd<Fwd<T>> x[], size_t n )
 // h is column-major nxn matrix
 
-template <typename F>
-void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fwd<Fwd<double>> x_cpy[], size_t n, F f )
+template <typename T, typename F>
+void fwd_hessian_no_alloc( T *f_val, T h[], T g[], T x[], Fwd<Fwd<T>> x_cpy[], size_t n, F f )
 {
-    Fwd<Fwd<double>> tmp = { 0 };
+    Fwd<Fwd<T>> tmp = { 0 };
     int f_val_not_set = 1;
 
     for ( size_t i=0; i<n; ++i ) {
-        x_cpy[i] = Fwd<Fwd<double>>( Fwd<double>(x[i]) );
+        x_cpy[i] = Fwd<Fwd<T>>( Fwd<T>(x[i]) );
     }
 
     for ( size_t i=0; i<n; ++i ) {
@@ -561,17 +585,29 @@ void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fw
     }
 }
 
-
-template <typename F>
-void fwd_hessian( double *f_val, double h[], double g[], double x[], size_t n, F f )
+template <typename T, typename F>
+void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fwd<Fwd<double>> x_cpy[], size_t n, F f )
 {
-#define FWD_HESS_STACK_SIZE 50
+    fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
+}
 
-    Fwd<Fwd<double>> buff[FWD_HESS_STACK_SIZE];
-    Fwd<Fwd<double>> *x_cpy = buff;
+template <typename T, typename F>
+void fwd_hessian_no_alloc_( float *f_val, float h[], float g[], float x[], Fwd<Fwd<float>> x_cpy[], size_t n, F f )
+{
+    fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
+}
 
-    if ( n >= FWD_HESS_STACK_SIZE ) {
-        x_cpy = (Fwd<Fwd<double>>*) malloc(n * sizeof(*x_cpy));
+
+template <typename T, typename F>
+void fwd_hessian( T *f_val, T h[], T g[], T x[], size_t n, F f )
+{
+#define FWD_HESS_STACK_SIZE 2500
+
+    Fwd<Fwd<T>> buff[FWD_HESS_STACK_SIZE];
+    Fwd<Fwd<T>> *x_cpy = buff;
+
+    if ( n >=FWD_HESS_STACK_SIZE ) {
+        x_cpy = (Fwd<Fwd<T>>*) malloc(n * sizeof(*x_cpy));
     }
 
     fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
@@ -582,6 +618,20 @@ void fwd_hessian( double *f_val, double h[], double g[], double x[], size_t n, F
 
 #undef FWD_HESS_STACK_SIZE
 }
+
+template <typename T, typename F>
+void fwd_hessian( double *f_val, double h[], double g[], double x[], size_t n, F f )
+{
+    fwd_hessian( f_val, h, g, x, n, f );
+}
+
+template <typename T, typename F>
+void fwd_hessian( float *f_val, float h[], float g[], float x[], size_t n, F f )
+{
+    fwd_hessian( f_val, h, g, x, n, f );
+}
+
+
 
 
 

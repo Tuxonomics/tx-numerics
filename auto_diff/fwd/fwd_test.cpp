@@ -2,15 +2,18 @@
 
 #include "fwd.hpp"
 #include "../finite_differences/finite_differences.hpp"
-#include "../../tx_tests.hpp"
+#include "../../utilities/tx_tests.h"
 
 
 using namespace std;
 
 #define ASSERT TX_ASSERT
+#define ASSERT_MSG TX_ASSERT_MSG
+#define ASSERT_MSG_VA TX_ASSERT_MSG
 
 
-bool approx( double a, double b, double eps )
+template <typename T>
+bool approx( T a, T b, T eps )
 {
     if ( abs(a - b) > eps ) {
         return false;
@@ -18,6 +21,25 @@ bool approx( double a, double b, double eps )
     else {
         return true;
     }
+}
+
+
+template <typename T>
+T _eps( void )
+{
+    return T(NAN);
+}
+
+template <>
+double _eps( void )
+{
+    return 1e-8;
+}
+
+template <>
+float _eps( void )
+{
+    return 1e-4f;
 }
 
 
@@ -34,26 +56,28 @@ void test_fwd( void )
     ASSERT( x.val == z.val );
 }
 
+
+template <typename T>
 void test_fwd_add( void )
 {
-    Fwd<double> x(1.0, 1.0);
-    Fwd<double> y(2.0);
+    Fwd<T> x(T(1.0), T(1.0));
+    Fwd<T> y(T(2.0));
 
     ASSERT( x < y && x <= y );
 
-    Fwd<double> z = x + y;
+    Fwd<T> z = x + y;
 
     ASSERT( z.val == x.val + y.val );
     ASSERT( z.dot == x.dot );
 
-    Fwd<double> zz = z + 4.0;
+    Fwd<T> zz = z + T(4.0);
 
-    ASSERT( zz.val == z.val + 4.0 );
+    ASSERT( zz.val == z.val + T(4.0) );
     ASSERT( zz.dot == z.dot );
 
-    Fwd<double> zzz = 4.0 + z;
+    Fwd<T> zzz = T(4.0) + z;
 
-    ASSERT( zzz.val == z.val + 4.0 );
+    ASSERT( zzz.val == z.val + T(4.0) );
     ASSERT( zzz.dot == z.dot );
 }
 
@@ -214,14 +238,16 @@ void test_atan( void )
     ASSERT( approx( z.dot, 1.0 / (1.0 + (x.val*x.val)), 1e-10) );
 }
 
+
+template <typename T>
 void test_exp( void )
 {
-    Fwd<double> x(2.0, 1.0);
+    Fwd<T> x(T(2.0), T(1.0));
 
-    Fwd<double> z = exp(x);
+    Fwd<T> z = exp(x);
 
-    ASSERT( approx(z.val, exp(x.val), 1e-10) );
-    ASSERT( approx(z.dot, exp(x.val), 1e-10) );
+    ASSERT( approx(z.val, exp(x.val), T(1e-10)) );
+    ASSERT( approx(z.dot, exp(x.val), T(1e-10)) );
 }
 
 void test_log( void )
@@ -292,53 +318,83 @@ T test_grad_func_1( T *x, size_t n )
     return res;
 }
 
-void test_grad_1( void )
+
+template <typename T>
+void test_grad_1( T test_precision )
 {
 #define n 2
 
-    double x[n] = { 4.0, 1.0 };
-    double g1[n];
-    double g2[n];
+   T x[n] = { T(4.0), T(1.0) };
+   T g1[n];
+   T g2[n];
 
-    double eps[n] = { 1e-8, 1e-8 };
+   T eps[n] = { _eps<T>(), _eps<T>() };
 
-    fd_grad( NULL, g1, x, eps, n, test_grad_func_1<double> );
-    fwd_gradient( NULL, g2, x, n, test_grad_func_1<Fwd<double>> );
+   T fval;
+
+   fd_grad( &fval, g1, x, eps, n, test_grad_func_1<T> );
+   fwd_gradient( &fval, g2, x, n, test_grad_func_1<Fwd<T>> );
+
+   for ( size_t i=0; i<n; ++i ) {
+       ASSERT( approx(g1[i]/g2[i], T(1.0), test_precision) );
+   }
+
+#undef n
+}
+
+void test_grad_1_double( void )
+{
+    test_grad_1( 1e-8 );
+}
+
+void test_grad_1_float( void )
+{
+    test_grad_1( 1e-2f );
+}
+
+
+
+template <typename T>
+void test_hess_1( T test_precision )
+{
+#define n 2
+
+    T x[n] = { T(4.0), T(1.0) };
+    T g1[n];
+    T g2[n];
+    T h1[n*n];
+    T h2[n*n];
+
+    T eps[n] = { _eps<T>(), _eps<T>() };
+
+    T fval;
+
+    fwd_gradient( &fval, g1, x, n, test_grad_func_1<Fwd<T>> );
+    fwd_hessian( &fval, h2, g2, x, n, test_grad_func_1< Fwd<Fwd<T>> > );
 
     for ( size_t i=0; i<n; ++i ) {
-        ASSERT( approx(g1[i], g2[i], 1e-6) );
+        ASSERT( approx(g1[i]/g2[i], T(1.0), test_precision) );
     }
 
 #undef n
 }
 
-
-void test_hess_1( void )
+void test_hess_1_double( void )
 {
-#define n 2
-
-    double x[n] = { 4.0, 1.0 };
-    double g1[n];
-    double g2[n];
-    double h1[n*n];
-    double h2[n*n];
-
-    double eps[n] = { 1e-8, 1e-8 };
-
-    fwd_gradient( NULL, g1, x, n, test_grad_func_1<Fwd<double>> );
-    fwd_hessian( NULL, h2, g2, x, n, test_grad_func_1< Fwd<Fwd<double>> > );
-
-    for ( size_t i=0; i<n; ++i ) {
-        ASSERT( approx(g1[i], g2[i], 1e-6) );
-    }
-
-#undef n
+    test_hess_1( 1e-8 );
 }
+
+void test_hess_1_float( void )
+{
+    test_hess_1( 1e-8f );
+}
+
 
 
 TX_TEST_LIST = {
     TX_ADD_TEST(test_fwd),
-    TX_ADD_TEST(test_fwd_add),
+    TX_ADD_TEST(test_fwd_add<double>),
+    TX_ADD_TEST(test_fwd_add<float>),
     TX_ADD_TEST(test_fwd_sub),
     TX_ADD_TEST(test_fwd_mul),
     TX_ADD_TEST(test_fwd_div),
@@ -350,15 +406,20 @@ TX_TEST_LIST = {
     TX_ADD_TEST(test_cos),
     TX_ADD_TEST(test_tan),
     TX_ADD_TEST(test_atan),
-    TX_ADD_TEST(test_exp),
+    TX_ADD_TEST(test_exp<double>),
+    TX_ADD_TEST(test_exp<float>),
     TX_ADD_TEST(test_log),
     TX_ADD_TEST(test_logabs),
     TX_ADD_TEST(test_sinh),
     TX_ADD_TEST(test_cosh),
     TX_ADD_TEST(test_tanh),
     TX_ADD_TEST(test_atanh),
-    TX_ADD_TEST(test_grad_1),
-    TX_ADD_TEST(test_hess_1),
+
+    TX_ADD_TEST(test_grad_1_double),
+    TX_ADD_TEST(test_grad_1_float),
+
+    TX_ADD_TEST(test_hess_1_double),
+    TX_ADD_TEST(test_hess_1_float),
 };
 
 

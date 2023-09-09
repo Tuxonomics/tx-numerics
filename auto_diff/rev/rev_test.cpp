@@ -2,12 +2,14 @@
 
 #include "rev.hpp"
 #include "../finite_differences/finite_differences.hpp"
-#include "../../tx_tests.h"
+#include "../../utilities/tx_tests.h"
 
 
 using namespace std;
 
 #define ASSERT TX_ASSERT
+#define ASSERT_MSG TX_ASSERT_MSG
+#define ASSERT_MSG_VA TX_ASSERT_MSG
 
 
 bool approx( double a, double b, double eps )
@@ -18,6 +20,25 @@ bool approx( double a, double b, double eps )
     else {
         return true;
     }
+}
+
+
+template <typename T>
+T _eps( void )
+{
+    return T(NAN);
+}
+
+template <>
+double _eps( void )
+{
+    return 1e-10;
+}
+
+template <>
+float _eps( void )
+{
+    return 1e-4f;
 }
 
 

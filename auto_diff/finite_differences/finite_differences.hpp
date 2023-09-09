@@ -1,13 +1,13 @@
 
-// prototype for f: double f( double x[], size_t n )
-template <typename F>
-void fd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f )
+// prototype for f: T f( T x[], size_t n )
+template <typename T, typename F>
+void fd_grad( T *fval, T g[], T x[], T eps[], size_t n, F f )
 {
     if ( fval ) {
         *fval = f( x, n );
     }
 
-    double f0 = f( x, n );
+    T f0 = f( x, n );
 
     for ( size_t i = 0; i < n; ++i ) {
         x[i] += eps[i];
@@ -16,17 +16,29 @@ void fd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f 
     }
 }
 
+template <typename T, typename F>
+void fd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f )
+{
+    fd_grad( fval, g, x, eps, n, f );
+}
+
+template <typename T, typename F>
+void fd_grad( float *fval, float g[], float x[], float eps[], size_t n, F f )
+{
+    fd_grad( fval, g, x, eps, n, f );
+}
 
 
-// prototype for f: double f( double x[], size_t n )
-template <typename F>
-void cd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f )
+
+// prototype for f: T f( T x[], size_t n )
+template <typename T, typename F>
+void cd_grad( T *fval, T g[], T x[], T eps[], size_t n, F f )
 {
     if ( fval ) {
         *fval = f( x, n );
     }
 
-    double f0 = NAN, f1 = NAN, e = NAN, eh = NAN;
+    T f0 = T(NAN), f1 = T(NAN), e = T(NAN), eh = T(NAN);
 
     for ( size_t i = 0; i < n; ++i ) {
         e  = eps[i];
@@ -42,4 +54,15 @@ void cd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f 
     }
 }
 
+template <typename T, typename F>
+void cd_grad( double *fval, double g[], double x[], double eps[], size_t n, F f )
+{
+    cd_grad( fval, g, x, eps, n, f );
+}
+
+template <typename T, typename F>
+void cd_grad( float *fval, float g[], float x[], float eps[], size_t n, F f )
+{
+    cd_grad( fval, g, x, eps, n, f );
+}
 
