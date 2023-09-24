@@ -1,8 +1,8 @@
 // rev_t_test.cpp
 
+#include "../../utilities/tx_tests.h"
 #include "rev.hpp"
 #include "../finite_differences/finite_differences.hpp"
-#include "../../utilities/tx_tests.h"
 
 
 using namespace std;
@@ -11,16 +11,7 @@ using namespace std;
 #define ASSERT_MSG TX_ASSERT_MSG
 #define ASSERT_MSG_VA TX_ASSERT_MSG
 
-
-bool approx( double a, double b, double eps )
-{
-    if ( abs(a - b) > eps ) {
-        return false;
-    }
-    else {
-        return true;
-    }
-}
+#define APPROX TX_APPROX
 
 
 template <typename T>
@@ -187,8 +178,8 @@ void test_basic_ops( void )
 
     backprop( z );
 
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(2.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -197,8 +188,8 @@ void test_basic_ops( void )
 
     backprop( z );
 
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(2.0), EPS) );
 
     _TAPE_deinit<T>();
 }
@@ -215,9 +206,9 @@ void test_add( void )
 
     backprop( z );
 
-    ASSERT( approx(z.val, T(4.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
+    ASSERT( APPROX(z.val, T(4.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -226,9 +217,9 @@ void test_add( void )
 
     backprop( z );
 
-    ASSERT( approx(z.val, T(4.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
+    ASSERT( APPROX(z.val, T(4.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -239,10 +230,10 @@ void test_add( void )
 
     backprop( z );
 
-    ASSERT( approx(z.val, T(5.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(y), T(1.0), EPS) );
+    ASSERT( APPROX(z.val, T(5.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(y), T(1.0), EPS) );
 
     _TAPE_deinit<T>();
 }
@@ -259,9 +250,9 @@ void test_subtract( void )
 
     backprop( z );
 
-    ASSERT( approx(z.val, T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
+    ASSERT( APPROX(z.val, T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(-1.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -270,9 +261,9 @@ void test_subtract( void )
 
     backprop( z );
 
-    ASSERT( approx(z.val, T(-1.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(1.0), EPS) );
+    ASSERT( APPROX(z.val, T(-1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -283,10 +274,10 @@ void test_subtract( void )
 
     backprop( z );
 
-    ASSERT( approx(z.val, T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
-    ASSERT( approx(rev_adjoint(y), T(1.0), EPS) );
+    ASSERT( APPROX(z.val, T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(-1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(y), T(1.0), EPS) );
 
     _TAPE_deinit<T>();
 }
@@ -303,9 +294,9 @@ void test_multiply( void )
 
     backprop( z );
 
-    ASSERT( approx( z.val, T(4.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
+    ASSERT( APPROX( z.val, T(4.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(2.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -314,9 +305,9 @@ void test_multiply( void )
 
     backprop( z );
 
-    ASSERT( approx( z.val, T(4.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(2.0), EPS) );
+    ASSERT( APPROX( z.val, T(4.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(2.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -327,10 +318,10 @@ void test_multiply( void )
 
     backprop( z );
 
-    ASSERT( approx( z.val, T(6.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(3.0), EPS) );
-    ASSERT( approx(rev_adjoint(y), T(2.0), EPS) );
+    ASSERT( APPROX( z.val, T(6.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(3.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(y), T(2.0), EPS) );
 
     _TAPE_deinit<T>();
 }
@@ -347,9 +338,9 @@ void test_divide( void )
 
     backprop( z );
 
-    ASSERT( approx( z.val, T(2.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
+    ASSERT( APPROX( z.val, T(2.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(-1.0), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -358,9 +349,9 @@ void test_divide( void )
 
     backprop( z );
 
-    ASSERT( approx( z.val, T(0.5), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(0.25), EPS) );
+    ASSERT( APPROX( z.val, T(0.5), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(0.25), EPS) );
 
     _TAPE_reset_adjoints<T>();
 
@@ -371,10 +362,10 @@ void test_divide( void )
 
     backprop( z );
 
-    ASSERT( approx( z.val, T(2.0), EPS) );
-    ASSERT( approx(rev_adjoint(z), T(1.0), EPS) );
-    ASSERT( approx(rev_adjoint(x), T(-1.0), EPS) );
-    ASSERT( approx(rev_adjoint(y), T(0.5), EPS) );
+    ASSERT( APPROX( z.val, T(2.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(z), T(1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(x), T(-1.0), EPS) );
+    ASSERT( APPROX(rev_adjoint(y), T(0.5), EPS) );
 
     _TAPE_deinit<T>();
 }
@@ -412,10 +403,73 @@ void test_tape_operations( void )
 
     backprop_between<T>( tp1, tp0 );
 
-    ASSERT( approx( rev_adjoint(x), T(4.0)*n*yval, EPS ) );
-    ASSERT( approx( rev_adjoint(y), T(4.0)*n*xval, EPS ) );
+    ASSERT( APPROX( rev_adjoint(x), T(4.0)*n*yval, EPS ) );
+    ASSERT( APPROX( rev_adjoint(y), T(4.0)*n*xval, EPS ) );
 
     _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_exp( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = exp(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          exp(x.val), T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), exp(x.val), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+T test_grad_func_1( T *x, size_t n )
+{
+    T res = x[0]*x[0]*x[1] + std::exp(x[1]);
+    return res;
+}
+
+
+template <typename T>
+void test_grad_1( T test_precision )
+{
+#define n 2
+    _TAPE_init<T>();
+
+    T x[n] = { T(4.0), T(1.0) };
+    T g1[n];
+    T g2[n];
+
+    T eps[n] = { _eps<T>(), _eps<T>() };
+
+    T fval;
+
+    fd_grad( &fval, g1, x, eps, n, test_grad_func_1<T> );
+    rev_gradient( &fval, g2, x, n, test_grad_func_1<Rev<T>> );
+
+    for ( size_t i=0; i<n; ++i ) {
+       ASSERT( APPROX(g1[i]/g2[i], T(1.0), test_precision) );
+    }
+
+    _TAPE_deinit<T>();
+
+#undef n
+}
+
+void test_grad_1_double( void )
+{
+    test_grad_1( 1e-6 );
+}
+
+void test_grad_1_float( void )
+{
+    test_grad_1( 1e-2f );
 }
 
 
@@ -439,8 +493,14 @@ TX_TEST_LIST = {
     TX_ADD_TEST(test_divide<double>),
     TX_ADD_TEST(test_divide<float>),
 
+    TX_ADD_TEST(test_exp<double>),
+    TX_ADD_TEST(test_exp<float>),
+
     TX_ADD_TEST(test_tape_operations<double>),
     TX_ADD_TEST(test_tape_operations<float>),
+
+    TX_ADD_TEST(test_grad_1_double),
+    TX_ADD_TEST(test_grad_1_float),
 };
 
 

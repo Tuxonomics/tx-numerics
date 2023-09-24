@@ -5,10 +5,47 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <stdarg.h>
+#include <tgmath.h>
+
+#define TX_CONCAT_0(x, y) x ## y
+#define TX_CONCAT(x, y) TX_CONCAT_0(x, y)
+
 
 jmp_buf tx_text_buf;
 #define TX_ERROR_BUFFER_SIZE 1024
 char tx_error_buffer[TX_ERROR_BUFFER_SIZE];
+
+#define TX_APPROX(a, b, eps) (fabs((a)-(b)) < (eps))
+
+#define tx_approx_definition(T) \
+    bool tx_approx_ ## T( T a, T b, T eps ) \
+    { \
+        if ( b == T(0.0) ) { \
+            return TX_APPROX( a, b, eps ); \
+        } \
+        else { \
+            return TX_APPROX( a/b, T(1.0), eps ); \
+        } \
+    }
+
+tx_approx_definition(float)
+tx_approx_definition(double)
+
+#define tx_approx_array_definition(T) \
+    bool tx_approx_array_ ## T( T *a, T *b, T eps, size_t n ) \
+    { \
+        for ( size_t i = 0; i < n; ++i ) { \
+            if ( !tx_approx_ ## T(a[i], b[i], eps) ) { \
+                return false; \
+            } \
+        } \
+        return true; \
+    }
+
+tx_approx_array_definition(float)
+tx_approx_array_definition(double)
+
+#define TX_APPROX_ARRAY(a, b, eps, n, type) TX_CONCAT(tx_approx_array_,type)( a, b, eps, n)
 
 
 void tx_assert_msg(

@@ -6,6 +6,11 @@
 // Antoine Savine, "Modern Computational Finance - AAD and Parallel Simuations", 2018
 //
 
+
+#ifndef TX_REV_HPP
+#define TX_REV_HPP
+
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -29,6 +34,8 @@ struct Node {
 
     T          adjoint;    // derivative of node wrt to variable that "started" the reverse pass
 };
+
+struct Tape_Position;
 
 
 // ---------------------- //
@@ -57,10 +64,10 @@ template <typename T>
 void mb_print( Memory_Blocks<T> mb, const char *name )
 {
     printf("(%s) = {\n", name);
-    printf("\traw.len     = %zu\n", mb.raw.len);
-    printf("\traw.cap     = %zu\n\n", mb.raw.cap);
-    printf("\tblock_size  = %zu\n\n", mb.block_size);
-    printf("\tcur_block    = %zu\n", mb.cur_block);
+    printf("\traw.len       = %zu\n", mb.raw.len);
+    printf("\traw.cap       = %zu\n\n", mb.raw.cap);
+    printf("\tblock_size    = %zu\n\n", mb.block_size);
+    printf("\tcur_block     = %zu\n", mb.cur_block);
     printf("\tcur_block_pos = %zu\n\n", mb.cur_block_pos);
     printf("}\n");
 }
@@ -287,36 +294,6 @@ Node<T> * tp_alloc_node( Tape<T> *t, size_t n )
 
 
 template <typename T>
-void tp_reset_adjoints( Tape<T> *t )
-{
-    if ( t->nodes.block_size == 0 )
-        return;
-
-    size_t n_block    = t->nodes.cur_block;
-    size_t last_pos   = t->nodes.cur_block_pos;
-    size_t block_size = t->nodes.block_size;
-
-    size_t block_idx = 0;
-    size_t node_idx  = 0;
-
-    Node<T>  *node;
-    Node<T> **data = (Node<T> **) t->nodes.raw.data;
-
-    for ( ; block_idx < n_block; ++block_idx ) {
-        for ( node_idx = 0; node_idx < block_size; node_idx++ ) {
-            node = data[block_idx] + node_idx;
-            node->adjoint = 0;
-        }
-    }
-
-    for ( node_idx = 0; node_idx < last_pos; node_idx++ ) {
-        node = data[block_idx] + node_idx;
-        node->adjoint = 0;
-    }
-}
-
-
-template <typename T>
 void tp_clear( Tape<T> *t )
 {
     mb_clear( &(t->nodes) );
@@ -349,6 +326,66 @@ void tp_rewind( Tape<T> *t, Tape_Position tp )
     mb_rewind( &(t->nodes),    tp.nodes );
     mb_rewind( &(t->derivs),   tp.derivs );
     mb_rewind( &(t->arg_ptrs), tp.arg_ptrs );
+}
+
+
+template <typename T>
+void tp_reset_adjoints_until( Tape<T> *t, Tape_Position tp )
+{
+    if ( t->nodes.block_size == 0 )
+        return;
+
+    size_t n_block    = t->nodes.cur_block;
+    size_t last_pos   = t->nodes.cur_block_pos;
+    size_t block_size = t->nodes.block_size;
+
+    size_t block_idx = tp.nodes.block;
+    size_t node_idx  = tp.nodes.element;
+
+    Node<T>  *node;
+    Node<T> **data = (Node<T> **) t->nodes.raw.data;
+
+    for ( ; block_idx < n_block; ++block_idx ) {
+        for ( node_idx = 0; node_idx < block_size; node_idx++ ) {
+            node = data[block_idx] + node_idx;
+            node->adjoint = T(0);
+        }
+    }
+
+    for ( node_idx = 0; node_idx < last_pos; node_idx++ ) {
+        node = data[block_idx] + node_idx;
+        node->adjoint = T(0);
+    }
+}
+
+
+template <typename T>
+void tp_reset_adjoints( Tape<T> *t )
+{
+    if ( t->nodes.block_size == 0 )
+        return;
+
+    size_t n_block    = t->nodes.cur_block;
+    size_t last_pos   = t->nodes.cur_block_pos;
+    size_t block_size = t->nodes.block_size;
+
+    size_t block_idx = 0;
+    size_t node_idx  = 0;
+
+    Node<T>  *node;
+    Node<T> **data = (Node<T> **) t->nodes.raw.data;
+
+    for ( ; block_idx < n_block; ++block_idx ) {
+        for ( node_idx = 0; node_idx < block_size; node_idx++ ) {
+            node = data[block_idx] + node_idx;
+            node->adjoint = T(0);
+        }
+    }
+
+    for ( node_idx = 0; node_idx < last_pos; node_idx++ ) {
+        node = data[block_idx] + node_idx;
+        node->adjoint = T(0);
+    }
 }
 
 
@@ -437,6 +474,14 @@ void _TAPE_deinit( void )
 {
     Tape<T> *t = get_tape<T>();
     tp_free( t );
+}
+
+
+template <typename T>
+void _TAPE_reset_adjoints_until( Tape_Position tp )
+{
+    Tape<T> *t = get_tape<T>();
+    tp_reset_adjoints_until( t, tp );
 }
 
 
@@ -785,7 +830,7 @@ void backprop_between( Tape_Position start, Tape_Position end )
 }
 
 
-
+// TODO: make this start at v only
 template <typename T>
 inline
 void backprop_until( Rev<T> v, Tape_Position tp )
@@ -902,8 +947,8 @@ Rev<T> Rev<T>::operator*( Rev<T> rhs )
     rev_deriv_l( res ) = rhs.val;
     rev_deriv_r( res ) = val;
 
-    assert( std::isfinite(rev_deriv_l(res)) );
-    assert( std::isfinite(rev_deriv_r(res)) );
+    // assert( std::isfinite(rev_deriv_l(res)) );
+    // assert( std::isfinite(rev_deriv_r(res)) );
 
     return res;
 }
@@ -918,7 +963,7 @@ Rev<T> Rev<T>::operator*( T rhs )
 
     rev_deriv( res ) = rhs;
 
-    assert( std::isfinite(rev_deriv(res)) );
+    // assert( std::isfinite(rev_deriv(res)) );
 
     return res;
 }
@@ -944,8 +989,8 @@ Rev<T> Rev<T>::operator/( Rev<T> rhs )
     rev_deriv_l( res ) = irhs;
     rev_deriv_r( res ) = -val * irhs * irhs;
 
-    assert( std::isfinite(rev_deriv_l(res)) );
-    assert( std::isfinite(rev_deriv_r(res)) );
+    // assert( std::isfinite(rev_deriv_l(res)) );
+    // assert( std::isfinite(rev_deriv_r(res)) );
 
     return res;
 }
@@ -960,7 +1005,7 @@ Rev<T> Rev<T>::operator/( T rhs )
 
     rev_deriv( res ) = 1.0 / rhs;
 
-    assert( std::isfinite(rev_deriv(res)) );
+    // assert( std::isfinite(rev_deriv(res)) );
 
     return res;
 }
@@ -975,7 +1020,7 @@ Rev<T> operator/( T lhs, Rev<T> rhs )
 
     rev_deriv( res ) = -lhs / (rhs.val * rhs.val);
 
-    assert( std::isfinite(rev_deriv(res)) );
+    // assert( std::isfinite(rev_deriv(res)) );
 
     return res;
 }
@@ -1151,3 +1196,102 @@ bool operator>=( T lhs, Rev<T> rhs )
     return lhs >= rhs.val;
 }
 
+
+
+// ----------------------------- //
+// elementary functions overload //
+// ----------------------------- //
+
+
+namespace std {
+
+template <typename T>
+Rev<T> exp( Rev<T> x )
+{
+    T y_val = exp( x.val );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = y_val;
+
+    return y;
+}
+
+
+} // end namespace std
+
+
+// Gradient of function / functor fulfilling prototype
+// f: Rev<T> f( Rev<T> x[], size_t n )
+
+template <typename T, typename F>
+void rev_gradient_no_alloc( T *f_val, T g[], T x[], Rev<T> x_cpy[], size_t n, F f )
+{
+    Tape_Position tp0 = _TAPE_mark<T>();
+
+    for ( size_t i = 0; i < n; ++i ) {
+        x_cpy[i] = Rev<T>( x[i] );
+    }
+
+    Rev<T> z = f( x_cpy, n );
+
+    backprop_to_mark<T>( z, tp0 );
+
+    for ( size_t i = 0; i < n; ++i ) {
+        g[i] = rev_adjoint( x_cpy[i] );
+    }
+
+    if ( f_val ) {
+        *f_val = z.val;
+    }
+
+    _TAPE_rewind<T>( tp0 );
+}
+
+template <typename T, typename F>
+void rev_gradient_no_alloc( double *f_val, double g[], double x[], Rev<double> x_cpy[], size_t n, F f )
+{
+    rev_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
+}
+
+template <typename T, typename F>
+void rev_gradient_no_alloc( float *f_val, float g[], float x[], Rev<float> x_cpy[], size_t n, F f )
+{
+    rev_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
+}
+
+
+template <typename T, typename F>
+void rev_gradient( T *f_val, T g[], T x[], size_t n, F f )
+{
+#define REV_GRAD_STACK_SIZE 50
+
+    Rev<T> buff[REV_GRAD_STACK_SIZE];
+    Rev<T> *x_cpy = buff;
+
+    if ( n > REV_GRAD_STACK_SIZE ) {
+        x_cpy = (Rev<T>*) malloc(n * sizeof(*x_cpy));
+    }
+
+    rev_gradient_no_alloc( f_val, g, x, x_cpy, n, f );
+
+    if ( n >= REV_GRAD_STACK_SIZE ) {
+        free(x_cpy);
+    }
+
+#undef REV_GRAD_STACK_SIZE
+}
+
+template <typename T, typename F>
+void rev_gradient( double *f_val, double g[], double x[], size_t n, F f )
+{
+    rev_gradient( f_val, g, x, n, f );
+}
+
+template <typename T, typename F>
+void rev_gradient( float *f_val, float g[], float x[], size_t n, F f )
+{
+    rev_gradient( f_val, g, x, n, f );
+}
+
+#endif

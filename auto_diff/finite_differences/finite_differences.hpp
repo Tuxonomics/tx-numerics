@@ -1,3 +1,9 @@
+// finite_differences.hpp
+
+
+#ifndef TX_FINITE_DIFFERENCES_HPP
+#define TX_FINITE_DIFFERENCES_HPP
+
 
 // prototype for f: T f( T x[], size_t n )
 template <typename T, typename F>
@@ -66,3 +72,5 @@ void cd_grad( float *fval, float g[], float x[], float eps[], size_t n, F f )
     cd_grad( fval, g, x, eps, n, f );
 }
 
+
+#endif

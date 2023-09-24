@@ -9,6 +9,7 @@ jobs:
       - checkout
       - run: make tests-fwd-asan
       - run: make tests-rev-asan
+      - run: make tests-hessian-asan
 
 workflows:
   "Run Tests":

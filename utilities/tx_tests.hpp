@@ -5,6 +5,39 @@
 #include <stdlib.h>
 #include <exception>
 #include <assert.h>
+#include <cmath>
+
+template <typename T>
+bool tx_approx( T a, T b, T eps )
+{
+    return ( std::fabs(a - b) < eps );
+}
+
+#define TX_APPROX(a, b, eps) tx_approx(a, b, eps)
+
+template <typename T>
+bool _tx_approx( T a, T b, T eps )
+{
+    if ( b == T(0.0) ) {
+        return TX_APPROX( a, b, eps );
+    }
+    else {
+        return TX_APPROX( a/b, T(1.0), eps );
+    }
+}
+
+template <typename T>
+bool tx_approx_array( T *a, T *b, T eps, size_t n )
+{
+    for ( size_t i = 0; i < n; ++i ) {
+        if ( !_tx_approx(a[i], b[i], eps) ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#define TX_APPROX_ARRAY(a, b, eps, n, type) tx_approx_array<type>( a, b, eps, n)
 
 
 class tx_test_exception : public std::exception {

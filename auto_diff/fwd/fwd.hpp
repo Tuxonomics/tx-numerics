@@ -5,6 +5,9 @@
 // can be expected.
 
 
+#ifndef TX_FWD_HPP
+#define TX_FWD_HPP
+
 #include <stdlib.h>  // malloc, free
 #include <cmath>
 
@@ -466,7 +469,7 @@ Fwd<T> atanh( Fwd<T> x )
 
 
 
-// Gradient from function / functor fulfilling prototype
+// Gradient of function / functor fulfilling prototype
 // f: Fwd<T> f( Fwd<T> x[], size_t n )
 
 template <typename T, typename F>
@@ -544,7 +547,7 @@ void fwd_gradient( float *f_val, float g[], float x[], size_t n, F f )
 
 
 
-// Hessian from function / functor fulfilling prototype
+// Hessian of function / functor fulfilling prototype
 // f: Fwd<Fwd<T>> f( Fwd<Fwd<T>> x[], size_t n )
 // h is column-major nxn matrix
 
@@ -592,7 +595,7 @@ void fwd_hessian_no_alloc( double *f_val, double h[], double g[], double x[], Fw
 }
 
 template <typename T, typename F>
-void fwd_hessian_no_alloc_( float *f_val, float h[], float g[], float x[], Fwd<Fwd<float>> x_cpy[], size_t n, F f )
+void fwd_hessian_no_alloc( float *f_val, float h[], float g[], float x[], Fwd<Fwd<float>> x_cpy[], size_t n, F f )
 {
     fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
 }
@@ -606,13 +609,13 @@ void fwd_hessian( T *f_val, T h[], T g[], T x[], size_t n, F f )
     Fwd<Fwd<T>> buff[FWD_HESS_STACK_SIZE];
     Fwd<Fwd<T>> *x_cpy = buff;
 
-    if ( n >=FWD_HESS_STACK_SIZE ) {
+    if ( n*n >= FWD_HESS_STACK_SIZE ) {
         x_cpy = (Fwd<Fwd<T>>*) malloc(n * sizeof(*x_cpy));
     }
 
     fwd_hessian_no_alloc( f_val, h, g, x, x_cpy, n, f );
 
-    if ( n >= FWD_HESS_STACK_SIZE ) {
+    if ( n*n >= FWD_HESS_STACK_SIZE ) {
         free(x_cpy);
     }
 
@@ -632,6 +635,6 @@ void fwd_hessian( float *f_val, float h[], float g[], float x[], size_t n, F f )
 }
 
 
-
+#endif
 
 
