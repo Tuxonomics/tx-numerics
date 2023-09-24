@@ -8,11 +8,19 @@
 
 
 Tape<Fwd<double>> _TAPE_fd = { 0 };
+Tape<Fwd<float>>  _TAPE_ff = { 0 };
 
 template <>
 Tape<Fwd<double>> *get_tape( void )
 {
     return &_TAPE_fd;
+}
+
+
+template <>
+Tape<Fwd<float>> *get_tape( void )
+{
+    return &_TAPE_ff;
 }
 
 

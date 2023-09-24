@@ -214,7 +214,7 @@ Node<T> nd_make( size_t n )
 template <typename T>
 void nd_propagate_one( Node<T> node )
 {
-    if ( ! node.n || (node.adjoint == 0.0) )
+    if ( ! node.n || (node.adjoint == T(0.0)) )
         return;
 
     for ( size_t i=0; i<node.n; ++i ) {

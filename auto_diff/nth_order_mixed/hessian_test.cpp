@@ -23,10 +23,6 @@ T test_hessian_func_1( T *x, size_t n )
 template <typename T>
 void test_hessian_1( T test_precision )
 {
-
-#define T double
-#define test_precision 1e-8
-
 #define n 2
     _TAPE_init<Fwd<T>>();
 
@@ -50,8 +46,6 @@ void test_hessian_1( T test_precision )
     ASSERT( TX_APPROX_ARRAY(h, h_test, test_precision, n, T) );
 
 #undef n
-#undef T
-#undef test_precision
 }
 
 void test_hessian_1_double( void )
