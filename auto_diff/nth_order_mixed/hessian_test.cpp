@@ -42,6 +42,7 @@ void test_hessian_1( T test_precision )
 
     _TAPE_deinit<Fwd<T>>();
 
+    ASSERT( TX_APPROX( fval/fval_test, T(1.0), test_precision) );
     ASSERT( TX_APPROX_ARRAY(g, g_test, test_precision, n, T) );
     ASSERT( TX_APPROX_ARRAY(h, h_test, test_precision, n, T) );
 
