@@ -29,11 +29,11 @@ tests-rev-asan: clean
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
 
-tests-hess: clean
+tests-hessian: clean
 	$(CC) auto_diff/nth_order_mixed/hessian_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS)
 	./$(TEST_TARGET)
 
-tests-hess-asan: clean
+tests-hessian-asan: clean
 	$(CC) auto_diff/nth_order_mixed/hessian_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS) -fsanitize=address
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
