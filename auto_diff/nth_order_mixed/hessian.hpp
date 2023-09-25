@@ -30,9 +30,9 @@ Tape<Fwd<float>> *get_tape( void )
 template <typename T, typename F>
 void mixed_hessian_no_alloc( T *f_val, T h[], T g[], T x[], Rev<Fwd<T>> x_cpy[], size_t n, F f )
 {
-	int f_val_not_set = 1;
+    int f_val_not_set = 1;
 
-	Tape_Position tp0 = _TAPE_mark<Fwd<T>>();
+    Tape_Position tp0 = _TAPE_mark<Fwd<T>>();
 
     for ( size_t i = 0; i < n; ++i ) {
         x_cpy[i] = Rev<Fwd<T>>( Fwd<T>(x[i]) );

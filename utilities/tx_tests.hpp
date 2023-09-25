@@ -93,6 +93,7 @@ struct tx_test {
 #define TX_TESTS_MAIN int main( int argn, const char *argv[] ) \
     {\
         int success = 0;\
+        int failed = 0;\
 \
         for ( int i=0; i<TX_N_TESTS; i++ ) {\
             if ( tx_tests[i].f ) {\
@@ -102,16 +103,17 @@ struct tx_test {
                 try {\
                     tx_tests[i].f();\
                     test_result = (char *) TX_GREEN("OK");\
+                    success += 1;\
                 }\
                 catch (tx_test_exception &e) {\
                     test_result = (char *) TX_RED("FAILED");\
                     printf("Test failed %s\n", e.location);\
-                    success = 1;\
+                    failed += 1;\
                 }\
                 catch (...) {\
                     test_result = (char *) TX_RED("FAILED");\
                     printf("Test function could not be successfully executed!\n");\
-                    success = 1;\
+                    failed += 1;\
                 }\
 \
                 printf("%s ", tx_tests[i].name);\
@@ -124,5 +126,7 @@ struct tx_test {
             }\
         }\
 \
-        return success;\
+        printf("%i out of %i tests passed.\n", success, success+failed);\
+\
+        return failed;\
     }\

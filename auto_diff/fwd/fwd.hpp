@@ -364,19 +364,19 @@ bool operator>=( T lhs, Fwd<T> rhs )
 namespace std {
 
 template <typename T>
-Fwd<T> abs( Fwd<T> x )
+Fwd<T> fabs( Fwd<T> x )
 {
-    if ( x.val > 0.0 ) {
+    if ( x.val > T(0.0) ) {
         return x;
     }
-    else if ( x.val < 0.0 ) {
+    else if ( x.val < T(0.0) ) {
         return -x;
     }
-    else if ( x.val == 0.0 ) {
+    else if ( x.val == T(0.0) ) {
         return Fwd(T(0.0), T(0.0));
     }
     else { // x.val = inf, -inf, nan, ...
-        return Fwd(abs(x.val), T(NAN));
+        return Fwd(fabs(x.val), T(NAN));
     }
 }
 
@@ -392,6 +392,21 @@ Fwd<T> pow( Fwd<T> x, T a )
 {
     T tmp = std::pow( x.val, a - T(1.0) );
     return Fwd<T>( x.val * tmp, T(a) * tmp * x.dot );
+}
+
+template <typename T>
+Fwd<T> pow( T x, Fwd<T> a )
+{
+    T val = std::pow( x, a.val );
+    return Fwd<T>( val, std::log(x) * val * a.dot );
+}
+
+template <typename T>
+Fwd<T> pow( Fwd<T> x, Fwd<T> a )
+{
+    T tmp = std::pow( x.val, a.val - T(1.0) );
+    T val = x.val * tmp;
+    return Fwd<T>( val, T(a) * tmp * x.dot + std::log(x) * val * a.dot );
 }
 
 template <typename T>

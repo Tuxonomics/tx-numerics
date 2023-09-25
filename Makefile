@@ -38,8 +38,16 @@ tests-hessian-asan: clean
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
 
+tests-ad: clean tests-fwd tests-rev tests-hessian
+
+tests-ad-asan: clean tests-fwd-asan tests-rev-asan tests-hessian-asan
+
+
 clean:
 	rm -f $(TEST_TARGET)
 	rm -rf $(TEST_TARGET).dSYM fwd_perf
 
-.PHONY: clean tests
+.PHONY: clean tests tests-asan
+.PHONY: tests-fwd tests-fwd-asan
+.PHONY: tests-rev tests-rev-asan
+.PHONY: tests-hessian tests-hessian-asan
