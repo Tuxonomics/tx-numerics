@@ -411,6 +411,144 @@ void test_tape_operations( void )
 
 
 template <typename T>
+void test_fabs( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = fabs(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          x.val, T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), 1.0,   T(1e-10)) );
+
+    _TAPE_reset_adjoints<T>();
+
+
+    z = fabs(-x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          x.val, T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), 1.0,   T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_sqrt( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = sqrt(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          sqrt(x.val),                     T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0) / (T(2.0) * sqrt(x.val)), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_pow_1( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    T a = T(2.0);
+
+    Rev<T> z = pow(x, a);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          pow(x.val, a),              T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), a * pow(x.val, a - T(1.0)), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_sin( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = sin(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          sin(x.val), T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), cos(x.val), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_cos( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = cos(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          cos(x.val),  T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), -sin(x.val), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_tan( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = tan(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          tan(x.val),                         T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0) / (cos(x.val) * cos(x.val)), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
+void test_atan( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = atan(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          atan(x.val),                       T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0) / (T(1.0) + (x.val*x.val)), T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+template <typename T>
 void test_exp( void )
 {
     _TAPE_init<T>();
@@ -426,6 +564,80 @@ void test_exp( void )
 
     _TAPE_deinit<T>();
 }
+
+
+template <typename T>
+void test_log( void )
+{
+    _TAPE_init<T>();
+
+    Rev<T> x( T(2.0) );
+
+    Rev<T> z = log(x);
+
+    backprop( z );
+
+    ASSERT( APPROX(z.val,          log(x.val),     T(1e-10)) );
+    ASSERT( APPROX(rev_adjoint(x), T(1.0) / x.val, T(1e-10)) );
+
+    _TAPE_deinit<T>();
+}
+
+
+// template <typename T>
+// void test_logabs( void )
+// {
+//     Fwd<T> x(T(2.0), T(1.0));
+
+//     Fwd<T> z = logabs(-x);
+
+//     ASSERT( APPROX(z.val, log(abs(x.val)), T(1e-10)) );
+//     ASSERT( APPROX(z.dot, T(1.0) / x.val,  T(1e-10)) );
+// }
+
+// template <typename T>
+// void test_sinh( void )
+// {
+//     Fwd<T> x(T(2.0), T(1.0));
+
+//     Fwd<T> z = sinh(x);
+
+//     ASSERT( APPROX(z.val, sinh(x.val), T(1e-10)) );
+//     ASSERT( APPROX(z.dot, cosh(x.val), T(1e-10)) );
+// }
+
+// template <typename T>
+// void test_cosh( void )
+// {
+//     Fwd<T> x(T(2.0), T(1.0));
+
+//     Fwd<T> z = cosh(x);
+
+//     ASSERT( APPROX(z.val, cosh(x.val), T(1e-10)) );
+//     ASSERT( APPROX(z.dot, sinh(x.val), T(1e-10)) );
+// }
+
+// template <typename T>
+// void test_tanh( void )
+// {
+//     Fwd<T> x(T(2.0), T(1.0));
+
+//     Fwd<T> z = tanh(x);
+
+//     ASSERT( APPROX(z.val, tanh(x.val), T(1e-10)) );
+//     ASSERT( APPROX(z.dot, 1.0 - tanh(x.val)*tanh(x.val), T(1e-10)) );
+// }
+
+// template <typename T>
+// void test_atanh( void )
+// {
+//     Fwd<T> x(T(0.5), T(1.0));
+
+//     Fwd<T> z = atanh(x);
+
+//     ASSERT( APPROX(z.val, atanh(x.val), T(1e-10)) );
+//     ASSERT( APPROX(z.dot, T(1.0) / (T(1.0) - x.val*x.val), T(1e-10)) );
+// }
 
 
 template <typename T>
@@ -493,8 +705,32 @@ TX_TEST_LIST = {
     TX_ADD_TEST(test_divide<double>),
     TX_ADD_TEST(test_divide<float>),
 
+    TX_ADD_TEST(test_fabs<double>),
+    TX_ADD_TEST(test_fabs<float>),
+
+    TX_ADD_TEST(test_sqrt<double>),
+    TX_ADD_TEST(test_sqrt<float>),
+
+    TX_ADD_TEST(test_pow_1<double>),
+    TX_ADD_TEST(test_pow_1<float>),
+
+    TX_ADD_TEST(test_sin<double>),
+    TX_ADD_TEST(test_sin<float>),
+
+    TX_ADD_TEST(test_cos<double>),
+    TX_ADD_TEST(test_cos<float>),
+
+    TX_ADD_TEST(test_tan<double>),
+    TX_ADD_TEST(test_tan<float>),
+
+    TX_ADD_TEST(test_atan<double>),
+    TX_ADD_TEST(test_atan<float>),
+
     TX_ADD_TEST(test_exp<double>),
     TX_ADD_TEST(test_exp<float>),
+
+    TX_ADD_TEST(test_log<double>),
+    TX_ADD_TEST(test_log<float>),
 
     TX_ADD_TEST(test_tape_operations<double>),
     TX_ADD_TEST(test_tape_operations<float>),

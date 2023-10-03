@@ -24,6 +24,24 @@ Tape<Fwd<float>> *get_tape( void )
 }
 
 
+namespace std {
+
+template <typename T>
+Rev<Fwd<T>> pow( Rev<Fwd<T>> x, T a )
+{
+    Fwd<T> tmp = std::pow( x.val, a - T(1.0) );
+
+    Rev<Fwd<T>> y( x.node, tmp * x.val );
+
+    rev_deriv( y ) = a * tmp;
+
+    return y;
+}
+
+
+} // end namespace std
+
+
 // Hessian of function / functor fulfilling prototype
 // f: Rev<Fwd<T>> f( Rev<Fwd<T>> x[], size_t n )
 // h is column-major nxn matrix
@@ -47,7 +65,7 @@ void mixed_hessian_no_alloc( T *f_val, T h[], T g[], T x[], Rev<Fwd<T>> x_cpy[],
 
         x_cpy[j].val.dot = 1.0;
 
-        Rev<Fwd<T>> z = test_hessian_func_1( x_cpy, n );
+        Rev<Fwd<T>> z = f( x_cpy, n );
 
         backprop_to_mark<Fwd<T>>( z, tp0 );
 

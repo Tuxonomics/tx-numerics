@@ -562,7 +562,7 @@ struct Rev {
 
     Rev operator-() const
     {
-        return 0.0 - *this;
+        return T(0.0) - *this;
     }
 
     Rev operator+() const
@@ -830,7 +830,6 @@ void backprop_between( Tape_Position start, Tape_Position end )
 }
 
 
-// TODO: make this start at v only
 template <typename T>
 inline
 void backprop_until( Rev<T> v, Tape_Position tp )
@@ -1206,13 +1205,220 @@ bool operator>=( T lhs, Rev<T> rhs )
 namespace std {
 
 template <typename T>
+Rev<T> log( Rev<T> x );
+
+template <typename T>
+Rev<T> pow( Rev<T> x, T a );
+
+template <typename T>
+Rev<T> pow( T x, Rev<T> a );
+
+// template <typename T>
+// Rev<T> pow( Rev<T> x, Rev<T> a );
+
+
+template <typename T>
+Rev<T> fabs( Rev<T> x )
+{
+    if ( x.val > T(0.0) ) {
+        return x;
+    }
+    else if ( x.val < T(0.0) ) {
+        return -x;
+    }
+    else if ( x.val == T(0.0) ) {
+        return Rev<T>( T(0.0) );
+    }
+    else { // x.val = inf, -inf, nan, ...
+        return Rev<T>( x.val );
+    }
+}
+
+
+template <typename T>
+Rev<T> sqrt( Rev<T> x )
+{
+    T y_val = std::sqrt( x.val );
+
+    Rev<T> y( x.node, y_val );
+
+    rev_deriv( y ) = T(0.5) / y_val;
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> pow( Rev<T> x, T a )
+{
+    T tmp = std::pow( x.val, a - T(1.0) );
+
+    Rev<T> y( x.node, tmp * x.val );
+
+    rev_deriv( y ) = a * tmp;
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> pow( T x, Rev<T> a )
+{
+    T val = std::pow( x, a.val );
+
+    Rev<T> y( a.node, val );
+
+    rev_deriv( y ) = std::log(x) * val;
+
+    return y;
+}
+
+
+// template <typename T>
+// Rev<T> pow( Rev<T> x, Rev<T> a )
+// {
+
+// }
+
+
+template <typename T>
+Rev<T> sin( Rev<T> x )
+{
+    T val = std::sin( x.val );
+
+    Rev<T> y( x.node, val );
+
+    rev_deriv( y ) = std::cos(x.val);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> cos( Rev<T> x )
+{
+    T val = std::cos( x.val );
+
+    Rev<T> y( x.node, val );
+
+    rev_deriv( y ) = -std::sin(x.val);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> tan( Rev<T> x )
+{
+    T tmp = std::cos( x.val );
+
+    Rev<T> y( x.node, std::tan(x.val) );
+
+    rev_deriv( y ) = T(1.0) / (tmp * tmp);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> atan( Rev<T> x )
+{
+    T tmp = std::cos( x.val );
+
+    Rev<T> y( x.node, std::atan(x.val) );
+
+    rev_deriv( y ) = T(1.0) / (T(1.0) + (x.val * x.val));
+
+    return y;
+}
+
+
+template <typename T>
 Rev<T> exp( Rev<T> x )
 {
-    T y_val = exp( x.val );
+    T y_val = std::exp( x.val );
 
     Rev<T> y(x.node, y_val);
 
     rev_deriv( y ) = y_val;
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> log( Rev<T> x )
+{
+    T y_val = std::log( x.val );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = y_val != y_val ? y_val : (T(1.0) / x.val);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> logabs( Rev<T> x )
+{
+    T y_val = std::log( std::fabs(x.val) );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = T(1.0) / x.val;
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> sinh( Rev<T> x )
+{
+    T y_val = std::sinh( x.val );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = std::cosh(x.val);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> cosh( Rev<T> x )
+{
+    T y_val = std::cosh( x.val );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = std::sinh(x.val);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> tanh( Rev<T> x )
+{
+    T y_val = std::tanh( x.val );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = T(1.0) - (y_val * y_val);
+
+    return y;
+}
+
+
+template <typename T>
+Rev<T> atanh( Rev<T> x )
+{
+    T y_val = std::atanh( x.val );
+
+    Rev<T> y(x.node, y_val);
+
+    rev_deriv( y ) = T(1.0) / (T(1.0) - (x.val * x.val));
 
     return y;
 }

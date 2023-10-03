@@ -121,6 +121,18 @@ Fwd<T> operator+( T lhs, Fwd<T> rhs )
     return rhs + lhs;
 }
 
+template <typename T>
+Fwd<Fwd<T>> operator+( Fwd<Fwd<T>> lhs, T rhs )
+{
+    return Fwd<T>( lhs.val + rhs, lhs.dot );
+}
+
+template <typename T>
+Fwd<Fwd<T>> operator+( T lhs, Fwd<Fwd<T>> rhs )
+{
+    return rhs + lhs;
+}
+
 
 template <typename T>
 Fwd<T> Fwd<T>::operator-( Fwd<T> rhs )
@@ -136,6 +148,18 @@ Fwd<T> Fwd<T>::operator-( T rhs )
 
 template <typename T>
 Fwd<T> operator-( T lhs, Fwd<T> rhs )
+{
+    return Fwd<T>( lhs - rhs.val, -rhs.dot );
+}
+
+template <typename T>
+Fwd<Fwd<T>> operator-( Fwd<Fwd<T>> lhs, T rhs )
+{
+    return Fwd<Fwd<T>>( lhs.val - rhs, lhs.dot );
+}
+
+template <typename T>
+Fwd<Fwd<T>> operator-( T lhs, Fwd<Fwd<T>> rhs )
 {
     return Fwd<T>( lhs - rhs.val, -rhs.dot );
 }
@@ -159,6 +183,18 @@ Fwd<T> operator*( T lhs, Fwd<T> rhs )
     return rhs * lhs;
 }
 
+template <typename T>
+Fwd<Fwd<T>> operator*( Fwd<Fwd<T>> lhs, T rhs )
+{
+    return Fwd<Fwd<T>>( lhs.val * rhs, lhs.dot * rhs );
+}
+
+template <typename T>
+Fwd<Fwd<T>> operator*( T lhs, Fwd<Fwd<T>> rhs )
+{
+    return rhs * lhs;
+}
+
 
 template <typename T>
 Fwd<T> Fwd<T>::operator/( Fwd<T> rhs )
@@ -178,6 +214,18 @@ Fwd<T> operator/( T lhs, Fwd<T> rhs )
     return Fwd<T>( lhs / rhs.val, - (lhs*rhs.dot) / (rhs.val*rhs.val) );
 }
 
+template <typename T>
+Fwd<Fwd<T>> operator/( Fwd<Fwd<T>> lhs, T rhs )
+{
+    return Fwd<Fwd<T>>( lhs.val / rhs, lhs.dot / rhs );
+}
+
+template <typename T>
+Fwd<Fwd<T>> operator/( T lhs, Fwd<Fwd<T>> rhs )
+{
+    return Fwd<Fwd<T>>( lhs / rhs.val, - (lhs*rhs.dot) / (rhs.val*rhs.val) );
+}
+
 
 template <typename T>
 Fwd<T>& Fwd<T>::operator+=( Fwd<T> rhs )
@@ -194,6 +242,14 @@ Fwd<T>& Fwd<T>::operator+=( T rhs )
 }
 
 template <typename T>
+Fwd<Fwd<T>>& operator+=( Fwd<Fwd<T>> &lhs, T rhs )
+{
+    lhs.val = lhs.val + rhs;
+    return lhs;
+}
+
+
+template <typename T>
 Fwd<T>& Fwd<T>::operator-=( Fwd<T> rhs )
 {
     *this = *this - rhs;
@@ -206,6 +262,14 @@ Fwd<T>& Fwd<T>::operator-=( T rhs )
     *this = *this - rhs;
     return *this;
 }
+
+template <typename T>
+Fwd<Fwd<T>>& operator-=( Fwd<Fwd<T>> &lhs, T rhs )
+{
+     lhs.val = lhs.val - rhs;
+     return lhs;
+}
+
 
 template <typename T>
 Fwd<T>& Fwd<T>::operator*=( Fwd<T> rhs )
@@ -222,6 +286,14 @@ Fwd<T>& Fwd<T>::operator*=( T rhs )
 }
 
 template <typename T>
+Fwd<Fwd<T>>& operator*=( Fwd<Fwd<T>> &lhs, T rhs )
+{
+    lhs.val = lhs.val * rhs;
+    return lhs;
+}
+
+
+template <typename T>
 Fwd<T>& Fwd<T>::operator/=( Fwd<T> rhs )
 {
     *this = *this / rhs;
@@ -233,6 +305,13 @@ Fwd<T>& Fwd<T>::operator/=( T rhs )
 {
     *this = *this / rhs;
     return *this;
+}
+
+template <typename T>
+Fwd<Fwd<T>>& operator/=( Fwd<Fwd<T>> &lhs, T rhs )
+{
+    lhs.val = lhs.val / rhs;
+    return lhs;
 }
 
 
@@ -364,6 +443,25 @@ bool operator>=( T lhs, Fwd<T> rhs )
 namespace std {
 
 template <typename T>
+Fwd<T> log( Fwd<T> x );
+
+template <typename T>
+Fwd<T> pow( Fwd<T> x, T a );
+
+template <typename T>
+Fwd<Fwd<T>> pow( Fwd<Fwd<T>> x, T a );
+
+template <typename T>
+Fwd<T> pow( T x, Fwd<T> a );
+
+template <typename T>
+Fwd<T> pow( T x, Fwd<Fwd<T>> a );
+
+template <typename T>
+Fwd<T> pow( Fwd<T> x, Fwd<T> a );
+
+
+template <typename T>
 Fwd<T> fabs( Fwd<T> x )
 {
     if ( x.val > T(0.0) ) {
@@ -387,18 +485,33 @@ Fwd<T> sqrt( Fwd<T> x )
     return Fwd<T>( tmp, (T(0.5)*x.dot) / tmp );
 }
 
+
 template <typename T>
 Fwd<T> pow( Fwd<T> x, T a )
 {
     T tmp = std::pow( x.val, a - T(1.0) );
-    return Fwd<T>( x.val * tmp, T(a) * tmp * x.dot );
+    return Fwd<T>( x.val * tmp, a * tmp * x.dot );
+}
+
+template <typename T>
+Fwd<Fwd<T>> pow( Fwd<Fwd<T>> x, T a )
+{
+    Fwd<T> tmp = std::pow( x.val, a - T(1.0) );
+    return Fwd<Fwd<T>>( x.val * tmp, a * tmp * x.dot );
 }
 
 template <typename T>
 Fwd<T> pow( T x, Fwd<T> a )
 {
     T val = std::pow( x, a.val );
-    return Fwd<T>( val, std::log(x) * val * a.dot );
+    return Fwd<T>( val, std::log(x.val) * val * a.dot );
+}
+
+template <typename T>
+Fwd<T> pow( T x, Fwd<Fwd<T>> a )
+{
+    Fwd<T> val = std::pow( x, a.val );
+    return Fwd<Fwd<T>>( val, std::log(x.val) * val * a.dot );
 }
 
 template <typename T>
@@ -406,8 +519,9 @@ Fwd<T> pow( Fwd<T> x, Fwd<T> a )
 {
     T tmp = std::pow( x.val, a.val - T(1.0) );
     T val = x.val * tmp;
-    return Fwd<T>( val, T(a) * tmp * x.dot + std::log(x) * val * a.dot );
+    return Fwd<T>( val, T(a) * tmp * x.dot + std::log(x.val) * val * a.dot );
 }
+
 
 template <typename T>
 Fwd<T> sin( Fwd<T> x )
@@ -452,7 +566,7 @@ Fwd<T> log( Fwd<T> x )
 template <typename T>
 Fwd<T> logabs( Fwd<T> x )
 {
-    return Fwd<T>( std::log(std::abs(x.val)), x.dot / x.val );
+    return Fwd<T>( std::log(std::fabs(x.val)), x.dot / x.val );
 }
 
 template <typename T>
@@ -477,7 +591,7 @@ Fwd<T> tanh( Fwd<T> x )
 template <typename T>
 Fwd<T> atanh( Fwd<T> x )
 {
-    return Fwd<T>( std::atanh(x.val), T(1.0) / (T(1.0) - (x.val*x.val)) );
+    return Fwd<T>( std::atanh(x.val), x.dot / (T(1.0) - (x.val*x.val)) );
 }
 
 } // end namespace std
