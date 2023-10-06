@@ -90,41 +90,45 @@ struct tx_test {
 #define TX_RED(text)   "\033[31m" text "\033[0m"
 
 
+int tx_run_tests(tx_test *test_list, size_t n_tests)
+{
+    int success = 0;
+    int failed  = 0;
+
+    for ( int i=0; i < n_tests; i++ ) {
+        if ( test_list[i].f ) {
+            int failed = setjmp( tx_text_buf );
+            char *test_result = NULL;
+            size_t name_size = strlen(test_list[i].name);
+
+            if ( !failed ) {
+                test_list[i].f();
+                test_result = (char *) TX_GREEN("OK");
+                success += 1;
+            }
+            else {
+                printf("Test failed %s\n", tx_error_buffer);
+                test_result = (char *) TX_RED("FAILED");
+                failed += 1;
+            }
+
+            printf("%s ", test_list[i].name);
+            printf("\033[90m");
+            for (size_t i = 0; i < TX_TEST_OUTPUT_LEN - name_size; i++ ) {
+                putchar('.');
+            }
+            printf("\033[0m");
+            printf(" %s\n", test_result);
+            fflush(stdout);
+        }
+    }
+
+    printf("%i out of %i tests passed.\n", success, success+failed);
+
+    return failed;
+}
+
+
 #define TX_TESTS_MAIN int main( int argn, const char *argv[] ) \
-    {\
-        int success = 0;\
-        int failed  = 0;\
-\
-        for ( int i=0; i<TX_N_TESTS; i++ ) {\
-            if ( tx_tests[i].f ) {\
-                int failed = setjmp( tx_text_buf ); \
-                char *test_result = NULL;\
-                size_t name_size = strlen(tx_tests[i].name);\
-     \
-                if ( !failed ) {\
-                    tx_tests[i].f();\
-                    test_result = (char *) TX_GREEN("OK");\
-                    success += 1;\
-                }\
-                else {\
-                    printf("Test failed %s\n", tx_error_buffer);\
-                    test_result = (char *) TX_RED("FAILED");\
-                    failed += 1;\
-                }\
-    \
-                printf("%s ", tx_tests[i].name);\
-                printf("\033[90m");\
-                for (size_t i = 0; i < TX_TEST_OUTPUT_LEN - name_size; i++ ) {\
-                    putchar('.');\
-                }\
-                printf("\033[0m");\
-                printf(" %s\n", test_result);\
-                fflush(stdout);\
-            }\
-        }\
-\
-        printf("%i out of %i tests passed.\n", success, success+failed);\
-\
-        return failed;\
-    }\
+    { return tx_run_tests(tx_tests, TX_N_TESTS); }
 

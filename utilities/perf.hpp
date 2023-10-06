@@ -189,7 +189,8 @@ template<typename TestStruct, int numTests>
 void RunTests( TestStruct (&testArray)[numTests] ) {
 	CacheClearer cc;
 
-	const int TRIALS = 128;
+	// const int TRIALS = 128;
+	const int TRIALS = 1024;
 
 	struct TimingData {
 		int testID;
