@@ -31,10 +31,18 @@ using b8  = i8;
 using b32 = i32;
 
 
+
+inline
+u32 rotl(const u32 x, i32 k) {
+    return (x << k) | (x >> (32 - k));
+}
+
 inline
 u64 rotl(const u64 x, i32 k) {
     return (x << k) | (x >> (64 - k));
 }
+
+
 
 /* Convert u64 to uniform f64. See http://xoshiro.di.unimi.it.
  This will cut the number of possible values in half as the lowest significant
@@ -48,53 +56,70 @@ f64 to_f64( u64 x )
 }
 
 
+inline
+f64 to_f64( u32 x )
+{
+    const union { u32 i; f32 d; }
+    u = { .i = UINT32_C(0x7F) << 23 | x >> 9 };
+    return (f64) (u.d - 1.0f);
+}
 
-#define NEXT_FUNC(name) inline u64 name(void *state)
-typedef u64 next_func(void *state);
 
-#define NEXT_N_FUNC(name) inline void name(void *state, u64 *output, u64 n)
-typedef void next_n_func(void *state, u64 *output, u64 n);
+#define NEXT_FUNC_U32(name) inline u32 name(void *state)
+#define NEXT_FUNC_U64(name) inline u64 name(void *state)
+template <typename U>
+using next_func = U (void *state);
+
+#define NEXT_N_FUNC_U32(name) inline void name(void *state, u32 *output, u64 n)
+#define NEXT_N_FUNC_U64(name) inline void name(void *state, u64 *output, u64 n)
+template <typename U>
+using next_n_func = void (void *state, U *output, u64 n);
 
 #define JUMP_FUNC(name) void name(void *state)
-typedef void jump_func(void *state);
+using jump_func = void (void *state);
 
 #define SEED_FUNC(name) void name(void *state, u64 seed)
-typedef void seed_func(void *state, u64 seed);
+using seed_func = void (void *state, u64 seed);
 
 
+template <typename U>
 struct Generator {
     void *state;
 
-    next_func    *next;
-    next_n_func  *next_n;
-    jump_func    *jump;
-    seed_func    *seed;
+    next_func<U>    *next;
+    next_n_func<U>  *next_n;
+    jump_func       *jump;
+    seed_func       *seed;
 };
 
 
+template <typename U>
 inline
-u64 next( Generator g )
+U next( Generator<U> g )
 {
     return g.next( g.state );
 }
 
 
+template <typename U>
 inline
-void next_n( Generator g, u64 *output, u64 n )
+void next_n( Generator<U> g, U *output, u64 n )
 {
     g.next_n( g.state, output, n );
 }
 
 
+template <typename U>
 inline
-void jump( Generator g )
+void jump( Generator<U> g )
 {
     g.jump( g.state );
 }
 
 
+template <typename U>
 inline
-void seed( Generator g, u64 seed )
+void seed( Generator<U> g, u64 seed )
 {
     g.seed( g.state, seed );
 }
@@ -133,7 +158,7 @@ struct Xorshift1024s {
 
 
 
-NEXT_FUNC(xorshift1024s_next)
+NEXT_FUNC_U64(xorshift1024s_next)
 {
     Xorshift1024s *x = (Xorshift1024s *) state;
 
@@ -148,7 +173,7 @@ NEXT_FUNC(xorshift1024s_next)
 }
 
 
-NEXT_N_FUNC(xorshift1024s_nextn)
+NEXT_N_FUNC_U64(xorshift1024s_nextn)
 {
     while ( n-- ) {
         output[n] = xorshift1024s_next(state);
@@ -203,11 +228,11 @@ SEED_FUNC(xorshift1024s_seed)
 }
 
 
-Generator xorshift1024s_init( Xorshift1024s *state, u64 seed )
+Generator<u64> xorshift1024s_init( Xorshift1024s *state, u64 seed )
 {
     xorshift1024s_seed( state, seed );
 
-    Generator g = {
+    Generator<u64> g = {
         .state  = state,
         .next   = xorshift1024s_next,
         .next_n = xorshift1024s_nextn,
@@ -226,7 +251,7 @@ struct Xoshiro256ss {
 };
 
 
-NEXT_FUNC(xoshiro256ss_next)
+NEXT_FUNC_U64(xoshiro256ss_next)
 {
     Xoshiro256ss *x = (Xoshiro256ss *) state;
 
@@ -247,7 +272,7 @@ NEXT_FUNC(xoshiro256ss_next)
 }
 
 
-NEXT_N_FUNC(xoshiro256ss_nextn)
+NEXT_N_FUNC_U64(xoshiro256ss_nextn)
 {
     while ( n-- ) {
         output[n] = xoshiro256ss_next(state);
@@ -300,11 +325,11 @@ SEED_FUNC(xoshiro256ss_seed)
 }
 
 
-Generator xoshiro256ss_init( Xoshiro256ss *state, u64 seed )
+Generator<u64> xoshiro256ss_init( Xoshiro256ss *state, u64 seed )
 {
     xoshiro256ss_seed( state, seed );
 
-    Generator g = {
+    Generator<u64> g = {
         .state  = state,
         .next   = xoshiro256ss_next,
         .next_n = xoshiro256ss_nextn,
@@ -316,18 +341,115 @@ Generator xoshiro256ss_init( Xoshiro256ss *state, u64 seed )
 }
 
 
+// xoshiro128+ https://prng.di.unimi.it/xoshiro128plus.c
+struct Xoshiro128p {
+    u32 s[4];
+};
+
+
+NEXT_FUNC_U32(xoshiro128p_next)
+{
+    Xoshiro128p *x = (Xoshiro128p *) state;
+
+    const u32 result = x->s[0] + x->s[3];
+
+    const u32 t = x->s[1] << 9;
+
+    x->s[2] ^= x->s[0];
+    x->s[3] ^= x->s[1];
+    x->s[1] ^= x->s[2];
+    x->s[0] ^= x->s[3];
+
+    x->s[2] ^= t;
+
+    x->s[3] = rotl(x->s[3], 11);
+
+    return result;
+}
+
+
+NEXT_N_FUNC_U32(xoshiro128p_nextn)
+{
+    while ( n-- ) {
+        output[n] = xoshiro256ss_next(state);
+    }
+}
+
+
+JUMP_FUNC(xoshiro128p_jump)
+{
+    Xoshiro128p *x = (Xoshiro128p *) state;
+
+    static const u32 JUMP[] = { 0x8764000b, 0xf542d2d3, 0x6fa035c3, 0x77f2db5b };
+
+    u32 s0 = 0;
+    u32 s1 = 0;
+    u32 s2 = 0;
+    u32 s3 = 0;
+    for(int i = 0; i < sizeof JUMP / sizeof *JUMP; i++)
+        for(int b = 0; b < 32; b++) {
+            if (JUMP[i] & UINT32_C(1) << b) {
+                s0 ^= x->s[0];
+                s1 ^= x->s[1];
+                s2 ^= x->s[2];
+                s3 ^= x->s[3];
+            }
+            xoshiro128p_next( state );
+        }
+
+    x->s[0] = s0;
+    x->s[1] = s1;
+    x->s[2] = s2;
+    x->s[3] = s3;
+}
+
+
+SEED_FUNC(xoshiro128p_seed)
+{
+    Xoshiro128p *x = (Xoshiro128p *) state;
+
+    sm64 sp = (sm64) { .s = seed };
+
+    for ( u32 i=0; i<4; ++i ) {
+        x->s[i] = (u32)sm64_next( &sp );
+    }
+}
+
+
+Generator<u32> xoshiro128p_init( Xoshiro128p *state, u64 seed )
+{
+    xoshiro256ss_seed( state, seed );
+
+    Generator<u32> g = {
+        .state  = state,
+        .next   = xoshiro128p_next,
+        .next_n = xoshiro128p_nextn,
+        .jump   = xoshiro128p_jump,
+        .seed   = xoshiro128p_seed,
+    };
+
+    return g;
+}
+
+
+// ------------- //
+// Distributions //
+// ------------- //
 
 
 // Uniform U[0,1] random number
+template <typename U>
 inline
-f64 uniform( Generator g )
+f64 uniform( Generator<U> g )
 {
     return to_f64( next( g ) );
 }
 
 
+
+template <typename U>
 inline
-void uniform_n( Generator g, f64 *output, u64 n )
+void uniform_n( Generator<U> g, f64 *output, u64 n )
 {
 #define BATCH_N 4
 
@@ -356,8 +478,9 @@ void uniform_n( Generator g, f64 *output, u64 n )
 }
 
 
+template <typename U>
 inline
-f64 uniform_positive( Generator g )
+f64 uniform_positive( Generator<U> g )
 {
     f64 res;
     do {
@@ -397,7 +520,8 @@ f64 uniform_cdf( f64 x, f64 a, f64 b )
 // from Numerical Recipes in C
 // prepared for threadsafety without static variables
 
-f64 normal_bm( Generator g )
+template <typename U>
+f64 normal_bm( Generator<U> g )
 {
     f64 u, v, rsq;
 
@@ -413,8 +537,9 @@ f64 normal_bm( Generator g )
 }
 
 
+template <typename U>
 inline
-f64 normal( Generator g )
+f64 normal( Generator<U> g )
 {
     return normal_bm( g );
 }
