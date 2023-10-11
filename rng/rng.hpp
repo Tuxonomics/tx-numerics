@@ -6,6 +6,11 @@
 #ifndef TX_RNG_HPP
 #define TX_RNG_HPP
 
+#ifdef __ARM_NEON
+    #include <arm_neon.h>
+#endif
+
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <time.h>
@@ -355,10 +360,22 @@ NEXT_FUNC_U32(xoshiro128p_next)
 
     const u32 t = x->s[1] << 9;
 
+// #ifdef __ARM_NEON
+//     uint32x2_t s01 = vld1_u32(&x->s[0]);
+//     uint32x2_t s23 = vld1_u32(&x->s[2]);
+
+//     s23 = veor_u32(s23, s01);
+
+//     vst1_u32(&x->s[2], s23);
+
+//     x->s[1] ^= x->s[2];
+//     x->s[0] ^= x->s[3];
+// #else
     x->s[2] ^= x->s[0];
     x->s[3] ^= x->s[1];
     x->s[1] ^= x->s[2];
     x->s[0] ^= x->s[3];
+// #endif
 
     x->s[2] ^= t;
 
@@ -371,7 +388,7 @@ NEXT_FUNC_U32(xoshiro128p_next)
 NEXT_N_FUNC_U32(xoshiro128p_nextn)
 {
     while ( n-- ) {
-        output[n] = xoshiro256ss_next(state);
+        output[n] = xoshiro128p_next(state);
     }
 }
 
@@ -418,7 +435,7 @@ SEED_FUNC(xoshiro128p_seed)
 
 Generator<u32> xoshiro128p_init( Xoshiro128p *state, u64 seed )
 {
-    xoshiro256ss_seed( state, seed );
+    xoshiro128p_seed( state, seed );
 
     Generator<u32> g = {
         .state  = state,
@@ -426,6 +443,97 @@ Generator<u32> xoshiro128p_init( Xoshiro128p *state, u64 seed )
         .next_n = xoshiro128p_nextn,
         .jump   = xoshiro128p_jump,
         .seed   = xoshiro128p_seed,
+    };
+
+    return g;
+}
+
+
+#define XOROSHIRO128_UNROLL (4)
+
+struct Xoshiro128pv {
+    u32 s[4][XOROSHIRO128_UNROLL];
+};
+
+
+// scalar output only on first state
+NEXT_FUNC_U32(xoshiro128pv_next)
+{
+    Xoshiro128pv *x = (Xoshiro128pv *) state;
+
+    const u32 result = x->s[0][0] + x->s[0][3];
+
+    const u32 t = x->s[0][1] << 9;
+
+    x->s[0][2] ^= x->s[0][0];
+    x->s[0][3] ^= x->s[0][1];
+    x->s[0][1] ^= x->s[0][2];
+    x->s[0][0] ^= x->s[0][3];
+
+    x->s[0][2] ^= t;
+
+    x->s[0][3] = rotl(x->s[0][3], 11);
+
+    return result;
+}
+
+
+NEXT_N_FUNC_U32(xoshiro128pv_nextn)
+{
+    Xoshiro128pv *x = (Xoshiro128pv *) state;
+
+    u64 batch_count = n / XOROSHIRO128_UNROLL;
+    u64 left_count = n - batch_count * XOROSHIRO128_UNROLL;
+
+    while ( batch_count-- ) {
+        output[0] = xoshiro128p_next(x->s[0]);
+        output[1] = xoshiro128p_next(x->s[1]);
+        output[2] = xoshiro128p_next(x->s[2]);
+        output[3] = xoshiro128p_next(x->s[3]);
+
+        output += XOROSHIRO128_UNROLL;
+    }
+
+    while ( left_count-- ) {
+        (output++)[0] = xoshiro128p_next(x->s[0]);
+    }
+}
+
+
+JUMP_FUNC(xoshiro128pv_jump)
+{
+    Xoshiro128pv *x = (Xoshiro128pv *) state;
+
+    for ( size_t i = 0; i < XOROSHIRO128_UNROLL; ++i ) {
+        xoshiro128p_jump(x->s[i]);
+    }
+}
+
+
+SEED_FUNC(xoshiro128pv_seed)
+{
+    Xoshiro128pv *x = (Xoshiro128pv *) state;
+
+    sm64 sp = (sm64) { .s = seed };
+
+    for ( u32 i = 0; i < XOROSHIRO128_UNROLL; ++i ) {
+        for ( u32 j = 0; j < 4; ++j ) {
+            x->s[i][j] = (u32)sm64_next( &sp );
+        }
+    }
+}
+
+
+Generator<u32> xoshiro128pv_init( Xoshiro128pv *state, u64 seed )
+{
+    xoshiro128pv_seed( state, seed );
+
+    Generator<u32> g = {
+        .state  = state,
+        .next   = xoshiro128pv_next,
+        .next_n = xoshiro128pv_nextn,
+        .jump   = xoshiro128pv_jump,
+        .seed   = xoshiro128pv_seed,
     };
 
     return g;
@@ -453,12 +561,12 @@ void uniform_n( Generator<U> g, f64 *output, u64 n )
 {
 #define BATCH_N 4
 
-    u64 buffer[BATCH_N];
+    U buffer[BATCH_N];
 
-    u64 main_count = n / BATCH_N;
-    u64 left_count = n - main_count * BATCH_N;
+    U batch_count = U(n) / BATCH_N;
+    U left_count = U(n) - batch_count * BATCH_N;
 
-    while ( main_count-- ) {
+    while ( batch_count-- ) {
         next_n( g, buffer, BATCH_N );
 
         output[0] = to_f64(buffer[0]);
@@ -470,7 +578,7 @@ void uniform_n( Generator<U> g, f64 *output, u64 n )
     }
 
     while ( left_count-- ) {
-        u64 tmp = next( g );
+        U tmp = next( g );
         (output++)[0] = to_f64( tmp );
     }
 

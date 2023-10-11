@@ -67,6 +67,39 @@ void test_xoshiro256ss( void )
 }
 
 
+void test_xoshiro128p( void )
+{
+    Xoshiro128p x;
+    xoshiro128p_seed( &x, 37473 );
+
+    ASSERT( xoshiro128p_next( &x ) > 0 );
+
+    xoshiro128p_jump( &x);
+
+    ASSERT( xoshiro128p_next( &x ) > 0 );
+}
+
+
+void test_xoshiro128pv( void )
+{
+    Xoshiro128pv x;
+    xoshiro128pv_seed( &x, 37473 );
+
+    ASSERT( xoshiro128pv_next( &x ) > 0 );
+
+    u32 array[255];
+    xoshiro128pv_nextn( &x, array, 255 );
+
+    for ( size_t i = 0; i < 255; ++i ) {
+        ASSERT( array[i] > 0 );
+    }
+
+    xoshiro128pv_jump( &x);
+
+    ASSERT( xoshiro128pv_next( &x ) > 0 );
+}
+
+
 void test_generator( void )
 {
     u64 seed = seed_value();
@@ -133,6 +166,8 @@ void test_normal( void )
 TX_TEST_LIST = {
     TX_ADD_TEST(test_xorshift1024s),
     TX_ADD_TEST(test_xoshiro256ss),
+    TX_ADD_TEST(test_xoshiro128p),
+    TX_ADD_TEST(test_xoshiro128pv),
     TX_ADD_TEST(test_generator),
     TX_ADD_TEST(test_uniform),
     TX_ADD_TEST(test_normal),

@@ -17,7 +17,7 @@ tests-fwd-asan: clean
 
 fwd-perf: clean
 	$(CC) auto_diff/fwd/fwd_perf.cpp -o perf -O3 -std=c++17
-	./perf
+	-./perf
 
 
 tests-rev: clean
@@ -53,8 +53,12 @@ tests-rng-asan: clean
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
 rng-perf: clean
-	$(CC) rng/rng_perf.cpp -o perf -march=native -O3 -std=c++17
-	./perf
+	$(CC) rng/rng_perf.cpp -o perf -march=native -O3 -std=c++17 $(LFLAGS)
+	-./perf
+
+rng-perf-asan: clean
+	$(CC) rng/rng_perf.cpp -o perf -g -O0 -std=c++17 $(LFLAGS) -fsanitize=address
+	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./perf
 
 
 clean:
