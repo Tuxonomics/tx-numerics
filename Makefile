@@ -53,7 +53,7 @@ tests-rng-asan: clean
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
 rng-perf: clean
-	$(CC) rng/rng_perf.cpp -o perf -march=native -O3 -std=c++17 $(LFLAGS)
+	$(CC) rng/rng_perf.cpp -o perf -march=native -O3 -std=c++17 $(LFLAGS) -g
 	-./perf
 
 rng-perf-asan: clean

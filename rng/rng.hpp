@@ -449,10 +449,10 @@ Generator<u32> xoshiro128p_init( Xoshiro128p *state, u64 seed )
 }
 
 
-#define XOROSHIRO128_UNROLL (4)
+#define XOSHIRO128_UNROLL (4)
 
 struct Xoshiro128pv {
-    u32 s[4][XOROSHIRO128_UNROLL];
+    u32 s[XOSHIRO128_UNROLL][4];
 };
 
 
@@ -482,16 +482,104 @@ NEXT_N_FUNC_U32(xoshiro128pv_nextn)
 {
     Xoshiro128pv *x = (Xoshiro128pv *) state;
 
-    u64 batch_count = n / XOROSHIRO128_UNROLL;
-    u64 left_count = n - batch_count * XOROSHIRO128_UNROLL;
+    u64 batch_count = n / XOSHIRO128_UNROLL;
+    u64 left_count = n - batch_count * XOSHIRO128_UNROLL;
 
     while ( batch_count-- ) {
+#if __ARM_NEON
+        output[0] = x->s[0][0] + x->s[0][3];
+        output[1] = x->s[1][0] + x->s[1][3];
+        output[2] = x->s[2][0] + x->s[2][3];
+        output[3] = x->s[3][0] + x->s[3][3];
+
+        const u32 t0 = x->s[0][1] << 9;
+        const u32 t1 = x->s[1][1] << 9;
+        const u32 t2 = x->s[2][1] << 9;
+        const u32 t3 = x->s[3][1] << 9;
+
+
+        x->s[0][2] ^= x->s[0][0];
+        x->s[0][3] ^= x->s[0][1];
+        x->s[0][1] ^= x->s[0][2];
+        x->s[0][0] ^= x->s[0][3];
+
+        x->s[1][2] ^= x->s[1][0];
+        x->s[1][3] ^= x->s[1][1];
+        x->s[1][1] ^= x->s[1][2];
+        x->s[1][0] ^= x->s[1][3];
+
+        x->s[2][2] ^= x->s[2][0];
+        x->s[2][3] ^= x->s[2][1];
+        x->s[2][1] ^= x->s[2][2];
+        x->s[2][0] ^= x->s[2][3];
+
+        x->s[3][2] ^= x->s[3][0];
+        x->s[3][3] ^= x->s[3][1];
+        x->s[3][1] ^= x->s[3][2];
+        x->s[3][0] ^= x->s[3][3];
+
+
+        x->s[0][2] ^= t0;
+        x->s[1][2] ^= t1;
+        x->s[2][2] ^= t2;
+        x->s[3][2] ^= t3;
+
+        x->s[0][3] = rotl(x->s[0][3], 11);
+        x->s[1][3] = rotl(x->s[1][3], 11);
+        x->s[2][3] = rotl(x->s[2][3], 11);
+        x->s[3][3] = rotl(x->s[3][3], 11);
+
+#elif __AVX__
+        output[0] = x->s[0][0] + x->s[0][3];
+        output[1] = x->s[1][0] + x->s[1][3];
+        output[2] = x->s[2][0] + x->s[2][3];
+        output[3] = x->s[3][0] + x->s[3][3];
+
+        const u32 t0 = x->s[0][1] << 9;
+        const u32 t1 = x->s[1][1] << 9;
+        const u32 t2 = x->s[2][1] << 9;
+        const u32 t3 = x->s[3][1] << 9;
+
+
+        x->s[0][2] ^= x->s[0][0];
+        x->s[0][3] ^= x->s[0][1];
+        x->s[0][1] ^= x->s[0][2];
+        x->s[0][0] ^= x->s[0][3];
+
+        x->s[1][2] ^= x->s[1][0];
+        x->s[1][3] ^= x->s[1][1];
+        x->s[1][1] ^= x->s[1][2];
+        x->s[1][0] ^= x->s[1][3];
+
+        x->s[2][2] ^= x->s[2][0];
+        x->s[2][3] ^= x->s[2][1];
+        x->s[2][1] ^= x->s[2][2];
+        x->s[2][0] ^= x->s[2][3];
+
+        x->s[3][2] ^= x->s[3][0];
+        x->s[3][3] ^= x->s[3][1];
+        x->s[3][1] ^= x->s[3][2];
+        x->s[3][0] ^= x->s[3][3];
+
+
+        x->s[0][2] ^= t0;
+        x->s[1][2] ^= t1;
+        x->s[2][2] ^= t2;
+        x->s[3][2] ^= t3;
+
+        x->s[0][3] = rotl(x->s[0][3], 11);
+        x->s[1][3] = rotl(x->s[1][3], 11);
+        x->s[2][3] = rotl(x->s[2][3], 11);
+        x->s[3][3] = rotl(x->s[3][3], 11);
+
+#else
         output[0] = xoshiro128p_next(x->s[0]);
         output[1] = xoshiro128p_next(x->s[1]);
         output[2] = xoshiro128p_next(x->s[2]);
         output[3] = xoshiro128p_next(x->s[3]);
+#endif
 
-        output += XOROSHIRO128_UNROLL;
+        output += XOSHIRO128_UNROLL;
     }
 
     while ( left_count-- ) {
@@ -504,7 +592,7 @@ JUMP_FUNC(xoshiro128pv_jump)
 {
     Xoshiro128pv *x = (Xoshiro128pv *) state;
 
-    for ( size_t i = 0; i < XOROSHIRO128_UNROLL; ++i ) {
+    for ( size_t i = 0; i < XOSHIRO128_UNROLL; ++i ) {
         xoshiro128p_jump(x->s[i]);
     }
 }
@@ -516,10 +604,15 @@ SEED_FUNC(xoshiro128pv_seed)
 
     sm64 sp = (sm64) { .s = seed };
 
-    for ( u32 i = 0; i < XOROSHIRO128_UNROLL; ++i ) {
+    for ( u32 j = 0; j < 4; ++j ) {
+        x->s[0][j] = (u32)sm64_next( &sp );
+    }
+
+    for ( u32 i = 1; i < XOSHIRO128_UNROLL; ++i ) {
         for ( u32 j = 0; j < 4; ++j ) {
-            x->s[i][j] = (u32)sm64_next( &sp );
+            x->s[i][j] = x->s[i-1][j];
         }
+        xoshiro128p_jump(x->s[i]);
     }
 }
 

@@ -90,9 +90,13 @@ void test_xoshiro128pv( void )
     u32 array[255];
     xoshiro128pv_nextn( &x, array, 255 );
 
+    f64 mean = 0.0;
     for ( size_t i = 0; i < 255; ++i ) {
+        mean += to_f64(array[i]);
         ASSERT( array[i] > 0 );
     }
+    mean /= 255;
+    printf("%f\n", mean);
 
     xoshiro128pv_jump( &x);
 
