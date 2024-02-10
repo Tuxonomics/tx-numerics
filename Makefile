@@ -1,6 +1,6 @@
 CC = clang++
 
-CFLAGS = -O0 -g -std=c++17
+CFLAGS = -O0 -g -std=c++20
 LFLAGS = -lm
 
 
@@ -61,6 +61,17 @@ rng-perf-asan: clean
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./perf
 
 
+
+tests-mt: clean
+	$(CC) multi_threading/pool_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS)
+	./$(TEST_TARGET)
+
+tests-mt-asan: clean
+	$(CC) multi_threading/pool_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS) -fsanitize=address
+	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
+
+
+
 clean:
 	rm -f $(TEST_TARGET)
 	rm -rf $(TEST_TARGET).dSYM perf
@@ -69,3 +80,5 @@ clean:
 .PHONY: tests-fwd tests-fwd-asan
 .PHONY: tests-rev tests-rev-asan
 .PHONY: tests-hessian tests-hessian-asan
+.PHONY: tests-rng tests-rng-asan rng-perf rng-perf-asan
+.PHONY: tests-mt tests-mt-asan

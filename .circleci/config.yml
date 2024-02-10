@@ -8,6 +8,8 @@ jobs:
     steps:
       - checkout
       - run: make tests-ad-asan
+      - run: make tests-rng-asan
+      - run: make tests-mt-asan
 
 workflows:
   "Run Tests":
