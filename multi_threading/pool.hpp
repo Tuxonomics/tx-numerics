@@ -103,7 +103,7 @@ bool tp_init( Thread_Pool *tp, size_t n_workers = 0 )
     }
     else {
         size_t available_threads = std::thread::hardware_concurrency();
-        tp->n_workers = (available_threads == 0) ? 4 : available_threads-1;
+        tp->n_workers = (available_threads == 0) ? 3 : available_threads-1;
     }
 
     tp->workers = (Worker *) calloc( tp->n_workers, sizeof(*tp->workers) );
