@@ -71,6 +71,21 @@ tests-mt-asan: clean
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
 
+tests-linalg: clean
+	$(CC) lin_alg/lin_alg_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS)
+	./$(TEST_TARGET)
+
+tests-linalg-asan: clean
+	$(CC) lin_alg/linalg_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS) -fsanitize=address
+	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
+
+linalg-perf: clean
+	$(CC) lin_alg/lin_alg_perf.cpp -o perf -march=native -O3 -std=c++17 $(LFLAGS) -g
+	-./perf
+
+
+
+
 
 clean:
 	rm -f $(TEST_TARGET)

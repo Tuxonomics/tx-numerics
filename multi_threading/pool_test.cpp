@@ -36,7 +36,7 @@ void test_thread_pool( void )
 
     ASSERT( _COUNTER.load() == workloads );
 
-    printf("counter = %d\n", _COUNTER.load());
+    // printf("counter = %d\n", _COUNTER.load());
 }
 
 
