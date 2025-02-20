@@ -72,15 +72,15 @@ tests-mt-asan: clean
 
 
 tests-linalg: clean
-	$(CC) lin_alg/lin_alg_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS)
+	$(CC) lin_alg/lin_alg_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS) -framework Accelerate -DACCELERATE_NEW_LAPACK
 	./$(TEST_TARGET)
 
 tests-linalg-asan: clean
-	$(CC) lin_alg/linalg_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS) -fsanitize=address
+	$(CC) lin_alg/linalg_test.cpp -o $(TEST_TARGET) $(CFLAGS) $(LFLAGS) -fsanitize=address -framework Accelerate -DACCELERATE_NEW_LAPACK
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH="$(shell which llvm-symbolizer)" ./$(TEST_TARGET)
 
 linalg-perf: clean
-	$(CC) lin_alg/lin_alg_perf.cpp -o perf -march=native -O3 -std=c++17 $(LFLAGS) -g
+	$(CC) lin_alg/lin_alg_perf.cpp -o perf -march=native -O3 -std=c++17 $(LFLAGS) -g -framework Accelerate -DACCELERATE_NEW_LAPACK
 	-./perf
 
 
